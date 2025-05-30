@@ -60,11 +60,13 @@ def galcoord(*nc,keys):
 
 @dict_func     
 def pow10(*nc,keys):
-
-      f1 = lambda x: 10**x[keys[0]]
-      f2 = lambda x: 10**x[keys[1]]      
-
-      return [f1,f2]
+      
+      func_v = []
+      for k in keys:
+        f = lambda x, k=k : 10**x[k]
+        func_v.append(f)
+               
+      return func_v
               
 def merged_col(col1,col2):
 
