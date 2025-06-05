@@ -1,84 +1,201 @@
 STAR,LOGL,LTEFF,LTEFF2,SpC,GAL,REF,OTHER_ID
-S Dor 	                ,5.98,4.35,3.95,lbv,LMC,DJG98,HD35343
-HR Car                  ,5.00,4.26,4.00,lbv,MW,SMT17,HD90177
-eta Car                 ,6.69,4.40,    ,lbv,MW,DJG98,HD93308
-AG Car                  ,5.10,4.36,3.92,lbv,MW,SMT17,HD94910
-HD160529                ,5.50,4.04,3.95,lbv,MW,DJG98,
-HD168607                ,4.90,4.02,    ,lbv,MW,SMT17,V4029Sag
-HD168625                ,5.61,4.11,    ,lbv,MW,DJG98,V4030Sgr
-P Cyg                   ,5.95,4.28,    ,lbv,MW,DJG98,HD193237
-HD269582                ,5.46,4.31,    ,lbv,MW,DJG98,
-HD6884                  ,5.50,3.94,    ,lbv,SMC,DJG98,
-HD269006                ,5.42,4.13,3.95,lbv,LMC,DJG98,
-HD269662                ,5.46,4.01,3.88,lbv,LMC,DJG98,
-HD269858                ,6.10,4.48,3.93,lbv,LMC,DJG98,
-HD269929                ,5.90,4.30,3.93,lbv,LMC,DJG98,
-M33 Var C               ,5.82,4.35,3.89,lbv,M33,DJG98,
-HD5980                  ,6.47,4.56,    ,lbv,MW,KOE98,
-VHK 83                  ,6.35,4.56,    ,lbv,MW,SZF96,
-AF And                  ,6.25,4.48,    ,lbv,M31,SZF96,
-AE And                  ,5.85,4.32,    ,lbv,M31,SZF96,
-AG Car                  ,6.20,4.46,3.93,lbv,MW,LAM96,
-M33 V0532               ,6.15,4.48,3.93,lbv,M33,POL03,
-2MASS J16470749-4552290 ,5.80,4.26,3.95,lbv,MW,CLR04,
-HD269321                ,5.40,4.20,4.11,lbv,LMC,MAS00,
-MWC930                  ,5.50,4.23,3.89,lbv,MW,MIR14,
-2MASS J00441944+4122464 ,5.54,4.30,    ,lbv,M31,NONE,
-2MASS J01334919+3038091 ,5.90,4.38,    ,lbv,M33,NONE,
-M33 V0002               ,5.90,4.45,    ,lbv,M33,NONE,
-CPD-52_9243             ,5.90,4.21,    ,B[e]SG,MW,NONE,
-CPD-57_2874             ,5.70,4.30,    ,B[e]SG,MW,NONE,
-GG_Car                  ,5.18,4.32,    ,B[e]SG,MW,NONE,
-Hen3-298                ,5.10,4.18,    ,B[e]SG,MW,NONE,
-MWC137                  ,5.37,4.48,    ,B[e]SG,MW,NONE,
-MWC300                  ,5.10,4.30,    ,B[e]SG,MW,NONE,
-MWC349                  ,5.70,4.38,    ,B[e]SG,MW,NONE,
-HD327083                ,5.00,4.30,    ,B[e]SG,MW,NONE,
-AS381                   ,    ,    ,    ,B[e]SG,MW,NONE,
-CD-42_11721             ,4.00,4.15,    ,B[e]SG?,MW,NONE,
-Hen3-303                ,4.30,4.18,    ,B[e]SG?,MW,NONE,
-HD87643                 ,4.90,4.24,    ,B[e]SG?,MW,NONE,
-Hen_3-938               ,    ,    ,    ,B[e]SG?,MW,NONE,
-MWC342                  ,    ,    ,    ,B[e]SG?,MW,NONE,
-HD62623                 ,    ,    ,    ,B[e]SG?,MW,NONE,
-LGGS_J004320.97+414039.6,5.06,4.02,    ,B[e]SG,M31,NONE,
-LGGS_J004415.00+420156.2,5.46,4.24,    ,B[e]SG,M31,NONE,
-LGGS_J004417.10+411928.0,5.50,4.14,    ,B[e]SG,M31,NONE,
-LGGS_J004522.58+415034.8,    ,    ,    ,B[e]SG,M31,NONE,
-LGGS_J004220.31+405123.2,4.98,4.10,    ,B[e]SG?,M31,NONE,
-LGGS_J004221.78+410013.4,4.70,3.86,    ,B[e]SG?,M31,NONE,
-LGGS_J004229.87+410551.8,5.40,4.25,    ,B[e]SG?,M31,NONE,
-LGGS_J004411.36+413257.2,    ,    ,    ,B[e]SG?,M31,NONE,
-LGGS_J004442.28+415823.1,5.34,4.43,    ,B[e]SG?,M31,NONE,
-LGGS_J004444.52+412804.0,    ,    ,    ,B[e]SG?,M31,NONE,
-LGGS_J004621.08+421308.2,    ,    ,    ,B[e]SG?,M31,NONE,
-LHA120-S12             ,5.41,4.36,    ,B[e]SG,LMC,NONE,
-LHA120-S22             ,5.89,4.39,    ,B[e]SG,LMC,NONE,
-LHA120-S35             ,5.21,4.34,    ,B[e]SG,LMC,NONE,
-LHA120-S59             ,4.01,4.14,    ,B[e]SG,LMC,NONE,
-LHA120-S73             ,5.51,4.06,    ,B[e]SG,LMC,NONE,
-LHA120-S89             ,5.44,4.27,    ,B[e]SG,LMC,NONE,
-LHA120-S93             ,4.61,4.00,    ,B[e]SG,LMC,NONE,
-LHA120-S111            ,6.06,4.19,    ,B[e]SG,LMC,NONE,
-LHA120-S127            ,6.12,4.35,    ,B[e]SG,LMC,NONE,
-LHA120-S134            ,5.82,4.42,    ,B[e]SG,LMC,NONE,
-LHA120-S137            ,4.24,4.11,    ,B[e]SG,LMC,NONE,
-LHA115-S6              ,5.02,4.43,    ,B[e]SG,SMC,NONE,
-LHA115-S18             ,5.60,4.40,    ,B[e]SG,SMC,NONE,
-LHA115-S23             ,4.31,4.04,    ,B[e]SG,SMC,NONE,
-LHA115-S65             ,5.65,4.23,    ,B[e]SG,SMC,NONE,
-LHA120-S165            ,    ,	  ,    ,B[e]SG,LMC,NONE,
-ARDB_54                ,    ,	  ,    ,B[e]SG,LMC,NONE,
-VFTS1003               ,    ,    ,    ,B[e]SG?,LMC,NONE,
-VFTS822                ,    ,	  ,    ,B[e]SG?,LMC,NONE,
-MA93_1116              ,    ,	  ,    ,B[e]SG,SMC,NONE,
-LHA115-S38             ,    ,	  ,    ,B[e]SG?,SMC,NONE,
-LGGS_J013333.22+303343.4,5.52,4.47,    ,B[e]SG,M33,NONE,
-LGGS_J013350.12+304126.6,6.30,4.34,    ,B[e]SG,M33,NONE,
-LGGS_J013324.62+302328.4,4.94,4.36,    ,B[e]SG?,M33,NONE,
-LGGS_J013342.78+303256.3,5.22,4.24,    ,B[e]SG,M33,NONE,
-LGGS_J013349.28+305250.2,5.10,4.30,    ,B[e]SG,M33,NONE,
-LGGS_J013426.11+303424.7,4.78,4.09,    ,B[e]SG,M33,NONE,
-LGGS_J013459.47+303701.9,5.50,4.36,    ,B[e]SG,M33,NONE,
-LGGS_J013500.30+304150.9,4.78,4.21,    ,B[e]SG,M33,NONE,
-LGGS_J013242.26+302114.1,5.62,4.36,    ,B[e]SG,M33,NONE,
+HD80077                 ,    ,    ,    ,LBV?,MW,VG01,
+HR Car                  ,5.00,4.26,4.00,LBV,MW,HD94,HD90177
+eta Car                 ,6.69,4.40,    ,LBV,MW,HD94,HD93308
+Hen 3-519               ,    ,    ,    ,LBV?,MW,VG01,WR 31a
+AG Car                  ,6.20,4.46,3.93,LBV,MW,HD94,HD94910
+V432 Car                ,    ,    ,    ,LBV,MW,VG01,WRAY 15-751
+Sher 25                 ,    ,    ,    ,LBV?,MW,C05,
+[GKM2012] WS1           ,    ,    ,    ,LBV,MW,KN15,
+WRAY 16-137             ,    ,    ,    ,LBV,MW,GV14,
+IRAS 16254-4739         ,    ,    ,    ,LBV?,MW,W10,
+IRAS 16278-4808         ,    ,    ,    ,LBV?,MW,ST12,
+[GKF2010] MN44          ,    ,    ,    ,LBV,MW,GV15,VRMF 55
+HD148937                ,    ,    ,    ,LBV?,MW,VG01,WRAY 19-46
+[GKF2010] MN45          ,    ,    ,    ,LBV?,MW,W10, 
+2MASS J16470749-4552290 ,5.80,4.26,3.95,LBV,MW,CL04|R09,Westerlund 1 W 243
+[GKF2010] MN48          ,    ,    ,    ,LBV,MW,KN16, 
+HD152236                ,    ,    ,    ,LBV?,MW,VG01,zeta Sco
+HD326823                ,    ,    ,    ,LBV?,MW,VG01,V1104 Sco
+[GKF2010] MN55          ,    ,    ,    ,LBV?,MW,W10,
+[B61] 2                 ,    ,    ,    ,LBV?,MW,C05,WRAY 17-96
+Hen 3-1383              ,    ,    ,    ,LBV?,MW,GV12,[GKF2010] WS2
+HD160529                ,5.50,4.04,3.95,LBV,MW,DJG98|HD94,V905 Sco
+[GKF2010] MN58          ,    ,    ,    ,LBV,MW,ST12,
+GCIRS 34W               ,    ,    ,    ,LBV,MW,C05,
+GCIRS 33SE              ,    ,    ,    ,LBV?,MW,C05,
+GCIRS 16NW              ,    ,    ,    ,LBV?,MW,C05,
+GCIRS 16SW              ,    ,    ,    ,LBV?,MW,C05,
+GCIRS 16C               ,    ,    ,    ,LBV?,MW,C05,
+GCIRS 16NE              ,    ,    ,    ,LBV?,MW,C05,
+V4998 Sgr               ,    ,    ,    ,LBV,MW,MA10,LBV G0.120-0.048
+Pistol Star             ,    ,    ,    ,LBV,MW,VG01,V4647 Sgr
+V4650 Sgr               ,    ,    ,    ,LBV,MW,C05,FMM 362
+WR 102ka                ,    ,    ,    ,LBV?,MW,C05,Peony Star
+HD316285                ,    ,    ,    ,LBV,MW,F13|VG01,V4375 Sgr
+[GKF2010] MN76          ,    ,    ,    ,LBV?,MW,F13,S12
+[KMN95] Star A          ,    ,    ,    ,LBV?,MW,C05,LBV 1806-20
+HD168607                ,4.90,4.02,    ,LBV,MW,SMT17|VG01,V4029 Sag
+HD168625                ,5.61,4.11,    ,LBV,MW,DJG98|VG01,V4030 Sgr
+MWC 930                 ,5.50,4.23,3.89,LBV,MW,MIR14,V446 Sct
+[GKF2010] MN 80         ,    ,    ,    ,LBV?,MW,ST12,
+V481 Sct                ,    ,    ,    ,LBV,MW,C05,G24.73+0.69
+[WBH2005] G025.520+0.216,    ,    ,    ,LBV?,MW,HD94,
+V452 Sct                ,    ,    ,    ,LBV?,MW,VG01,BD-13 5061
+[GKF2010] MN83          ,    ,    ,    ,LBV?,MW,S12,
+MSX6C G026.4700+00.0207 ,    ,    ,    ,LBV?,MW,C05,
+[GKF2010] MN84          ,    ,    ,    ,LBV?,MW,W10,
+WRAY 16-232             ,    ,    ,    ,LBV?,MW,GV10,Hen 2-179
+V1672 Aql               ,    ,    ,    ,LBV,MW,C05,IRAS 18576+0341
+[GKF2010] MN101         ,    ,    ,    ,LBV?,MW,S12,IRAS 19040+0817
+V1429 Aql               ,    ,    ,    ,LBV?,MW,VG01,BD+14 3887
+V1936 Aql               ,    ,    ,    ,LBV?,MW,C05,[OMN2000] LS1  
+[GKF2010] MN112         ,    ,    ,    ,LBV?,MW,GV10,[D75b] Em* 19-008
+P Cyg                   ,5.95,4.28,    ,LBV,MW,DJG98,HD193237
+V439 Cyg                ,    ,    ,    ,LBV?,MW,P&N98,MWC 1015
+IRAS 20298+4011         ,    ,    ,    ,LBV?,MW,HD94,G 79.29+0.46
+Cyg OB2 12              ,    ,    ,    ,LBV?,MW,VG01,AS 424
+HD269006                ,5.42,4.13,3.95,LBV,LMC,DJG98|HD94,R 71
+HD268939                ,    ,    ,    ,LBV?,LMC,VG01,R 74
+LHA 120-S 18            ,    ,    ,    ,LBV?,LMC,VG01,SK −68 42
+HD269050                ,    ,    ,    ,LBV?,LMC,VG01,R 78
+HD269128                ,    ,    ,    ,LBV?,LMC,VG01,R 81
+HD269216                ,    ,    ,    ,LBV,LMC,VG01,SK −69 75
+HD269227                ,    ,    ,    ,LBV?,LMC,HD94,R 84
+HD269321                ,5.40,4.20,4.11,LBV,LMC,MAS00|VG01,R 85
+S Dor 	                ,5.98,4.35,3.95,LBV,LMC,DJG98|HD94,HD35343
+HD269445                ,    ,    ,    ,LBV?,LMC,VG01,R 99
+HD269582                ,5.46,4.31,    ,LBV,LMC,DJG98|VG01,SK −69 142a
+HD269604                ,    ,    ,    ,LBV?,LMC,VG01,SK −68 93
+HD269662                ,5.46,4.01,3.88,LBV,LMC,DJG98|HD94,R 110
+HD269687                ,    ,    ,    ,LBV?,LMC,VG01,LHA 120-S 119
+HD269700                ,    ,    ,    ,LBV,LMC,VG01,R 116
+HD269929                ,5.90,4.30,3.93,LBV,LMC,DJG98,
+HD37836                 ,    ,    ,    ,LBV?,LMC,VG01,R 123
+HD269858                ,6.10,4.48,3.93,LBV,LMC,DJG98|HD94,R 127
+HD269859                ,    ,    ,    ,LBV?,LMC,VG01,R 128
+CPD-69 463              ,    ,    ,    ,LBV,LMC,HD94,R 143
+SK −69 257              ,    ,    ,    ,LBV?,LMC,VG01,R 149
+CPD−69 500              ,    ,    ,    ,LBV?,LMC,WE97,SK −69 271
+SK −69 279              ,    ,    ,    ,LBV?,LMC,VG01,
+LHA 120-S 61            ,    ,    ,    ,LBV?,LMC,HD94,SK −67 266
+HD6884                  ,5.50,3.94,    ,LBV,SMC,DJG98|VC01,R 40
+HD5980                  ,6.47,4.56,    ,LBV,SMC,KOE98,R 14
+LGGS J003910.85+403622.4,    ,    ,    ,LBV?,M31,M16|H17,
+LGGS J004051.59+403303.0,    ,    ,    ,LBV,M31,M07|SH15,
+M31 V0571               ,    ,    ,    ,LBV?,M31,M07|H17,
+AE And                  ,5.85,4.32,    ,LBV,M31,SZF96|HD94,
+LGGS J004322.50+413940.9,    ,    ,    ,LBV?,M31,M07,
+AF And                  ,6.25,4.48,    ,LBV,M31,SZF96|HD94,
+LGGS J004341.84+411112.0,    ,    ,    ,LBV?,M31,M07,
+LGGS J004350.50+414611.4,    ,    ,    ,LBV?,M31,M07|SH15,
+2MASS J00441944+4122464 ,5.54,4.30,    ,LBV,M31,HD94,Var 15
+[WB92a] 411             ,    ,    ,    ,LBV?,M31,HD94|H17,
+[WB92a] 531             ,    ,    ,    ,LBV?,M31,M16|SH15,
+[RB73] A-1              ,    ,    ,    ,LBV,M31,HD94,Var A-1
+MAC 2-123               ,    ,    ,    ,LBV?,M31,M07,
+UCAC4 660-003111        ,    ,    ,    ,LBV,M31,M07|SH15,
+LGGS J013229.03+302819.6,    ,    ,    ,LBV?,M33,M16,
+LGGS J013235.25+303017.7,    ,    ,    ,LBV?,M33,M07,
+[HS80] B7               ,    ,    ,    ,LBV?,M33,H17,
+LGGS J013248.26+303950.4,    ,    ,    ,LBV?,M33,M07,
+[HS80] B43              ,    ,    ,    ,LBV?,M33,M07,
+[HS80] B48              ,    ,    ,    ,LBV?,M33,M16,
+FSZ 83                  ,    ,    ,    ,LBV?,M33,M16,
+LGGS J013317.22+303201.6,    ,    ,    ,LBV?,M33,H17,
+[DMS93] NGC 595 6       ,    ,    ,    ,LBV?,M33,M07,[AM85] M 33 2
+FSZ 126                 ,    ,    ,    ,LBV?,M33,H17,
+M33 Var C               ,5.82,4.35,3.89,LBV,M33,DJG98|HD94,
+LGGS J013337.35+303329.0,    ,    ,    ,LBV?,M33,H17,
+FSZ 163                 ,    ,    ,    ,LBV?,M33,M07,
+[HS80] 110A             ,    ,    ,    ,LBV?,M33,M07,
+IFM-B 888               ,    ,    ,    ,LBV?,M33,M16,
+2MASS J01334919+3038091 ,5.90,4.38,    ,LBV,M33,HD94,Var B
+IFM-B 1079              ,    ,    ,    ,LBV?,M33,M07,
+[MJ98] WR 98            ,    ,    ,    ,LBV?,M33,V09,
+[MJ98] WR 106           ,    ,    ,    ,LBV?,M33,H17,
+[HS80] B324             ,    ,    ,    ,LBV?,M33,M07,
+LGGS J013357.73+301714.2,    ,    ,    ,LBV?,M33,M07,
+[HS80] B416             ,    ,    ,    ,LBV?,M33,M07,
+[HS80] B393             ,    ,    ,    ,LBV?,M33,H17,
+VHK 83                  ,6.35,4.56,    ,LBV,M33,SZF96|M07,
+[HS80] B517             ,    ,    ,    ,LBV?,M33,M07,
+[HS80] B526             ,    ,    ,    ,LBV?,M33,M07,
+D33 J013416.4+303120.9  ,    ,    ,    ,LBV?,M33,M07,
+M33 V0002               ,5.90,4.45,    ,LBV,M33,HD94,Var 2
+FSZ 458                 ,    ,    ,    ,LBV?,M33,M07,
+Pul -3 120290           ,    ,    ,    ,LBV?,M33,M07,
+FSZ 465                 ,    ,    ,    ,LBV?,M33,H17,
+LGGS J013429.64+303732.1,    ,    ,    ,LBV?,M33,M07,
+LGGS J013432.76+304717.2,    ,    ,    ,LBV?,M33,H17,
+LGGS J013459.39+304201.2,    ,    ,    ,LBV?,M33,H17,
+M33 V0532               ,6.15,4.48,3.93,LBV,M33,H17,Romano Star
+LGGS J002012.13+591848.0,    ,    ,    ,LBV?,IC10,M07,
+LGGS J002016.48+591906.9,    ,    ,    ,LBV?,IC10,M07,
+LGGS J002020.35+591837.6,    ,    ,    ,LBV?,IC10,M07, 
+[S71b] V39              ,    ,    ,    ,LBV?,IC1613,HE10, 
+[DRR96] NGC 2363 V1     ,    ,    ,    ,LBV,NGC2366,PE06,
+LGGS J194503.77-145619.1,    ,    ,    ,LBV?,NGC6822,M07,
+MWC137                  ,5.37,4.48,    ,B[e]SG,MW,MU15|ES98,
+MWC349                  ,5.70,4.38,    ,B[e]SG,MW,GV12,
+GG Car                  ,5.18,4.32,    ,B[e]SG,MW,OK13|KR13|GV12,
+Hen3-298                ,5.10,4.18,    ,B[e]SG,MW,OK13|MI05,
+CPD-52 9243             ,5.90,4.21,    ,B[e]SG,MW,CI12,
+HD327083                ,5.00,4.30,    ,B[e]SG,MW,MI03,
+MWC300                  ,5.10,4.30,    ,B[e]SG,MW,WO85|MI04,
+AS381                   ,    ,    ,    ,B[e]SG,MW,MI02,
+CPD-57 2874             ,5.70,4.30,    ,B[e]SG,MW,DO07,
+Hen 3-938               ,    ,    ,    ,B[e]SG?,MW,CO19,
+MWC342                  ,    ,    ,    ,B[e]SG?,MW,MI99,
+Hen 3-303               ,4.30,4.18,    ,B[e]SG?,MW,MI05,
+CD-42 11721             ,4.00,4.15,    ,B[e]SG?,MW,BF07,
+HD87643                 ,4.90,4.24,    ,B[e]SG?,MW,MG88|MI09,
+HD62623                 ,    ,    ,    ,B[e]SG?,MW,CH10,
+[HSG2019] 10584-8.4     ,    ,    ,    ,B[e]SG?,M81,HU19,
+[HSG2019] 10584-4.1     ,    ,    ,    ,B[e]SG?,M81,HU19,
+[HSG2019] 10584-9.1     ,    ,    ,    ,B[e]SG?,M81,HU19,
+LHA120-S12              ,5.41,4.36,    ,B[e]SG,LMC,ZI86,
+LHA120-S22              ,5.89,4.39,    ,B[e]SG,LMC,ZI86,
+LHA120-S35              ,5.21,4.34,    ,B[e]SG,LMC,GU95,
+LHA120-S59              ,4.01,4.14,    ,B[e]SG,LMC,GU95,
+LHA120-S73              ,5.51,4.06,    ,B[e]SG,LMC,ST83,
+LHA120-S89              ,5.44,4.27,    ,B[e]SG,LMC,ZI86,
+LHA120-S93              ,4.61,4.00,    ,B[e]SG,LMC,GU95,
+LHA120-S111             ,6.06,4.19,    ,B[e]SG,LMC,MG88,
+LHA120-S127             ,6.12,4.35,    ,B[e]SG,LMC,ZI85,
+LHA120-S134             ,5.82,4.42,    ,B[e]SG,LMC,ZI86,
+LHA120-S137             ,4.24,4.11,    ,B[e]SG,LMC,GU95,
+LHA120-S165             ,    ,	  ,    ,B[e]SG,LMC,KA15,
+ARDB 54                 ,    ,	  ,    ,B[e]SG,LMC,CO19|LE14,
+VFTS1003                ,    ,    ,    ,B[e]SG?,LMC,EV11,
+VFTS822                 ,    ,	  ,    ,B[e]SG?,LMC,EV15|KA14,
+LHA115-S6               ,5.02,4.43,    ,B[e]SG,SMC,ZI96,
+LHA115-S18              ,5.60,4.40,    ,B[e]SG,SMC,ZI89,
+LHA115-S23              ,4.31,4.04,    ,B[e]SG,SMC,ZI92,
+LHA115-S65              ,5.65,4.23,    ,B[e]SG,SMC,ZI86,
+MA93_1116               ,    ,	  ,    ,B[e]SG,SMC,CO19,
+LHA115-S38              ,    ,	  ,    ,B[e]SG?,SMC,BO14,
+LGGS J004320.97+414039.6,5.06,4.02,    ,B[e]SG,M31,HU17|SH17,
+LGGS J004415.00+420156.2,5.46,4.24,    ,B[e]SG,M31,HU17|SH17,
+LGGS J004417.10+411928.0,5.50,4.14,    ,B[e]SG,M31,HU17|KR14,
+LGGS J004522.58+415034.8,    ,    ,    ,B[e]SG,M31,KR14,
+LGGS J004220.31+405123.2,4.98,4.10,    ,B[e]SG?,M31,HU17,
+LGGS J004221.78+410013.4,4.70,3.86,    ,B[e]SG?,M31,HU17,
+LGGS J004229.87+410551.8,5.40,4.25,    ,B[e]SG?,M31,HU17|SH17,
+LGGS J004411.36+413257.2,    ,    ,    ,B[e]SG?,M31,SH17,
+LGGS J004442.28+415823.1,5.34,4.43,    ,B[e]SG?,M31,HU17|SH17,
+LGGS J004444.52+412804.0,    ,    ,    ,B[e]SG?,M31,SH15,
+LGGS J004621.08+421308.2,    ,    ,    ,B[e]SG?,M31,SH17,
+LGGS J013333.22+303343.4,5.52,4.47,    ,B[e]SG,M33,CL12|HU17|KO18,
+LGGS J013350.12+304126.6,6.30,4.34,    ,B[e]SG,M33,CL12|HU17,
+LGGS J013324.62+302328.4,4.94,4.36,    ,B[e]SG?,M33,CL12|HU17,
+LGGS J013342.78+303256.3,5.22,4.24,    ,B[e]SG,M33,HU17,
+LGGS J013349.28+305250.2,5.10,4.30,    ,B[e]SG,M33,HU17,
+LGGS J013426.11+303424.7,4.78,4.09,    ,B[e]SG,M33,CL12|HU17,
+LGGS J013459.47+303701.9,5.50,4.36,    ,B[e]SG,M33,CL12|HU17,
+LGGS J013500.30+304150.9,4.78,4.21,    ,B[e]SG,M33,CL12|HU17,
+#
+#REFERENCES
+#LBVs CROSS-MATCHED WITH RICHARDSON & MEHNER 2018
+#HD94 = Humphreys & Davidson (1994); VG01 = van Genderen (2001); C05 = Clark et al. (2005); 
+#M07 = Massey et al. (2007); M16 = Massey et al. (2016); H17 = Humphreys et al. (2017)
