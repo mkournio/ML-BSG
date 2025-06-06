@@ -7,6 +7,7 @@ from astroquery.simbad import Simbad
 #from evolution import *
 import os
 from astropy.coordinates import SkyCoord
+from constants import *
 
 #EM = EvolutionaryModels()
 #data['MEVOL'] = EM.interp2d('logTe', 'logg', 'Mass', data['TEFF'], data['LOGG'], post_rsg = False, method='linear')
@@ -25,38 +26,63 @@ dict_tr = {}
 _tracks = os.listdir(EVOL_TRACKS_PATH)
 
 xc = PreProcess(args).compile()
-GDW =  [not any(y in x for y in ('III','V','O9','A0','A1','A2','A3','ON','OC')) for x in xc['SpC']]
-xc = xc[GDW]; 
+GDW =  [(not any(y in x for y in ('III','V','O9','A0','A1','A2','A3','ON','OC'))) or ('LBV' in x) for x in xc['SpC']]
+xc = xc[GDW];
+cm = PostProcess(xc).xmatch().append('combined')
+cm.sort(['RA'])
 
-cm = PostProcess(xc).xmatch()#.append('combined')
-print(cm)
-#print(cm['STAR','RA','DEC','SLOGL','GLON','GLAT'])
-#LBV = ['lbv' in x for x in cm['SpC']]
-#BRC = ['B[e]SG' in x for x in cm['SpC']]
+print(cm['STAR','SpC','GAL','REF','Kmag','Gmag','DIST','GDIST','MK','MG'].pprint(max_lines=-1))
 
-#plt.plot(cm['RA'],cm['DEC'],'.')
-#plt.plot(cm['RA'][LBV],cm['DEC'][LBV],'ko',mew=2,ms=14,mfc='None');
-#plt.plot(cm['RA'][BRC],cm['DEC'][BRC],'ks',mew=2,ms=14,mfc='None'); 
-#plt.show()
+
+LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]
+cLBV = [('LBV?' in x) for x in cm['SpC']]
+BRC = [('B[e]SG' in x) & ('?' not in x) for x in cm['SpC']]
+cBRC = [('B[e]SG?' in x) for x in cm['SpC']]
+
+plt.plot(cm['RA'],cm['DEC'],**plot_all)
+plt.plot(cm['RA'][LBV],cm['DEC'][LBV],**plot_LBV)
+plt.plot(cm['RA'][cLBV],cm['DEC'][cLBV],**plot_cLBV)
+plt.plot(cm['RA'][BRC],cm['DEC'][BRC],**plot_BRC)
+plt.plot(cm['RA'][cBRC],cm['DEC'][cBRC],**plot_cBRC)
+
+for g, p in GALAXIES.items(): 
+ c = plt.Circle((p['RA'], p['DEC']), p['RAD'], color='r', fill=False)
+ plt.gca().add_patch(c)
+ plt.text(p['RA'], p['DEC'], g, c='r', fontsize=8)
+
+plt.show()
+
+
 #print(cm['STAR','SpC','RA','DEC','Gmag','GDIST','MG','SLOGL','REF'].pprint(max_lines=-1))
 #plt.plot(cm['TEFF'],cm['SLOGL'],'rx'); plt.xlabel(r'T$_{eff}$'); plt.ylabel(r'log(T$_{eff}^4$/g [$L_{\odot}$])'); plt.xlabel(r'T$_{eff}$ [K]'); plt.gca().invert_xaxis() ; plt.show()
-'''
-cm = cm[(cm['GAL']=='MW') & (cm['MK']<-2.5)]; cm.sort(['RA'])
-print(cm['STAR','SpC','RA','DEC','Gmag','GDIST','MG','Tmag','t1','SLOGL'])
+
+cm = cm[(cm['MK']<-2.5)]; cm.sort(['RA'])
+print(cm['STAR','SpC','RA','DEC','REF','DIST','GDIST','MK'].pprint(max_lines=-1))
+
+LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]
+cLBV = [('LBV?' in x) for x in cm['SpC']]
+BRC = [('B[e]SG' in x) & ('?' not in x) for x in cm['SpC']]
+cBRC = [('B[e]SG?' in x) for x in cm['SpC']]
 DR24 = ['D24' in x for x in cm['REF']]
-LBV = ['lbv' in x for x in cm['SpC']]
-BRC = ['B[e]SG' in x for x in cm['SpC']]
 
-#plt.plot(cm['BR'],cm['MG'],'o'); plt.xlabel(r'G$_{B}$-G$_{R}$'); plt.ylabel(r'M$_{G}$')  
-#plt.plot(cm['BR'][DR24],cm['MG'][DR24],'rx'); 
-#plt.plot(cm['BR'][LBV],cm['MG'][LBV],'ko',mew=2,ms=14,mfc='None'); 
-#plt.plot(cm['BR'][BRC],cm['MG'][BRC],'ks',mew=2,ms=14,mfc='None'); 
+plt.plot(cm['BR'],cm['MG'],**plot_all); plt.xlabel(r'G$_{B}$-G$_{R}$'); plt.ylabel(r'M$_{G}$')  
+plt.plot(cm['BR'][DR24],cm['MG'][DR24],'rx'); 
+plt.plot(cm['BR'][LBV],cm['MG'][LBV],**plot_LBV) 
+plt.plot(cm['BR'][cLBV],cm['MG'][cLBV],**plot_cLBV) 
+plt.plot(cm['BR'][BRC],cm['MG'][BRC],**plot_BRC) 
+plt.plot(cm['BR'][cBRC],cm['MG'][cBRC],**plot_cBRC)
+plt.gca().invert_yaxis() 
+plt.show()
 
-plt.plot(cm['JK'],cm['MK'],'o'); plt.xlabel(r'J-K'); plt.ylabel(r'M$_{K}$')  
-plt.plot(cm['JK'][DR24],cm['MK'][DR24],'rx'); 
-plt.plot(cm['JK'][LBV],cm['MK'][LBV],'ko',ms=14,mfc='None'); 
-plt.plot(cm['JK'][BRC],cm['MK'][BRC],'ks',ms=14,mfc='None'); 
+plt.plot(cm['JK'],cm['MK'],**plot_all); plt.xlabel(r'J-K'); plt.ylabel(r'M$_{K}$')  
+plt.plot(cm['JK'][DR24],cm['MK'][DR24],'rx')
+plt.plot(cm['JK'][LBV],cm['MK'][LBV],**plot_LBV)
+plt.plot(cm['JK'][cLBV],cm['MK'][cLBV],**plot_cLBV) 
+plt.plot(cm['JK'][BRC],cm['MK'][BRC],**plot_BRC)
+plt.plot(cm['JK'][cBRC],cm['MK'][cBRC],**plot_cBRC)
+plt.gca().invert_yaxis() 
 
+plt.show()
 #gal = SkyCoord(ra=np.array(cm['RA'])*u.degree, dec=np.array(cm['DEC'])*u.degree, frame='icrs').galactic
 #plt.plot(cm['RUWE'],gal.b,'o')
 #plt.plot(cm['RUWE'],cm['GLAT'],'rx'); plt.xlabel(r'RUWE'); plt.ylabel(r'GLAT'); plt.axvline(1.4)   
@@ -85,10 +111,9 @@ plt.plot(cm['JK'][BRC],cm['MK'][BRC],'ks',ms=14,mfc='None');
  # plt.plot(GB_GR[1:250],MG[1:250],'k'); plt.text(GB_GR[0],MG[0]-0.1,str(m_ini))
  
 
-plt.gca().invert_yaxis() 
-plt.show()
+#plt.gca().invert_yaxis() 
+#plt.show()
 
-'''
 
 
 

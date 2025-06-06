@@ -6,7 +6,7 @@ from astroquery.simbad import Simbad
 import numpy as np
 from astropy.io import ascii
 
-#from constants import *
+from constants import *
 
 def dict_func(func):
          def wrapper(*args,**kwargs):
@@ -41,6 +41,58 @@ def sbcoord_d(*nc,keys):
       func_dec = lambda x: simb_q(x[id_k])[1]
 
       return [func_ra, func_dec]
+ 
+@dict_func           
+def dist(*nc,keys):
+
+      g_k, d2_k = keys
+
+      def gal_to_d(gal,dist2):
+             
+         d_arr = np.ma.array(np.zeros(len(gal)),mask=True)
+         for i, j, k in zip(range(len(d_arr)),gal,dist2):
+             try:
+              d_arr[i] = int(GALAXIES[j]['D'])
+             except:
+              d_arr[i] = k        
+
+         return d_arr
+      
+      return [lambda x: gal_to_d(x[g_k],x[d2_k])]
+
+@dict_func            
+def absmag(*nc,keys):
+
+      d = keys[-1]
+      keys = keys[:-1]
+      
+      func_v = []
+      for k in keys:
+        f = lambda x, k=k: x[k] - (5 * np.log10(x[d])) + 5
+        func_v.append(f)
+               
+      return func_v    
+ 
+@dict_func     
+def galloc(*nc,keys):
+
+      ra_k, dec_k = keys
+ 
+      def coord_to_gal(ra,dec):
+      
+       gal=[]
+       for r, d in zip(ra,dec):
+        
+        g_star='MW'
+        for g, p in GALAXIES.items(): 
+         if ((r-p['RA'])**2) + ((d-p['DEC'])**2) < (p['RAD']**2):  
+          g_star = g
+          break
+        gal.append(g_star) 
+
+       return gal
+    
+      return [lambda x: coord_to_gal(x[ra_k],x[dec_k])]
       
 @dict_func            
 def galcoord(*nc,keys):
