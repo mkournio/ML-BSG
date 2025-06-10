@@ -2,15 +2,17 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord
 from astroquery.xmatch import XMatch
 from astropy.table import Table,  hstack, vstack, Column, MaskedColumn
-from astroquery.simbad import Simbad
 import numpy as np
 from astropy.io import ascii
-
+from .functions import *
 from constants import *
 
 def dict_func(func):
          def wrapper(*args,**kwargs):
            
+           if len(args) != len(func(*args,**kwargs)):
+              raise ValueError("Defined columns do not match the output of the called function")
+              
            dict_f = {x:y for x,y in zip(args,func(*args,**kwargs))}
            
            return dict_f
@@ -31,16 +33,42 @@ def slogl(*nc,keys):
 def sbcoord_d(*nc,keys):
 
       id_k = keys[0]
-      def simb_q(ids):
-
-        s_obj = Simbad.query_objects(list(ids))
-        
-        return to_deg(s_obj['RA'],s_obj['DEC']) 
              
       func_ra = lambda x: simb_q(x[id_k])[0]
       func_dec = lambda x: simb_q(x[id_k])[1]
 
       return [func_ra, func_dec]
+      
+@dict_func      
+def diffcol(*nc,keys):
+
+      func_v = []
+      for kp in keys:
+        m1_k, m2_k = kp
+        f = lambda x, m1_k = m1_k, m2_k = m2_k : x[m1_k] - x[m2_k] 
+        func_v.append(f)
+    
+      return func_v
+
+@dict_func      
+def meancol(*nc,keys):
+
+     func_v = []
+     for kp in keys:      
+        f = lambda x, kp = kp: np.array(x[kp].to_pandas().mean(axis=1))
+        func_v.append(f) 
+            
+     return func_v
+
+@dict_func      
+def coord_h2d(*nc, keys):
+
+     ra_k, dec_k = keys
+     
+     func_ra = lambda x: to_deg(x[ra_k],x[dec_k])[0]
+     func_dec = lambda x: to_deg(x[ra_k],x[dec_k])[1]
+     
+     return [func_ra, func_dec]     
  
 @dict_func           
 def dist(*nc,keys):
@@ -77,21 +105,7 @@ def absmag(*nc,keys):
 def galloc(*nc,keys):
 
       ra_k, dec_k = keys
- 
-      def coord_to_gal(ra,dec):
-      
-       gal=[]
-       for r, d in zip(ra,dec):
-        
-        g_star='MW'
-        for g, p in GALAXIES.items(): 
-         if ((r-p['RA'])**2) + ((d-p['DEC'])**2) < (p['RAD']**2):  
-          g_star = g
-          break
-        gal.append(g_star) 
-
-       return gal
-    
+          
       return [lambda x: coord_to_gal(x[ra_k],x[dec_k])]
       
 @dict_func            
@@ -129,45 +143,6 @@ def merged_col(col1,col2):
 
       return mcol  
             
-def radmass(logg,rad):
-		
-	logg_arr = np.array(logg.filled(np.nan))
-	rad_arr = np.array(rad.filled(np.nan))
 
-	return (10**logg_arr) * ((rad_arr * RSUN_TO_CM)**2) / (G_ACC * MSUN_TO_GR)
 
-def sedscal(rad,dist):
-
-	rad_arr = np.array(rad.filled(np.nan))		
-	dist_arr = np.array(dist.filled(np.nan))
-
-	return np.log10(rad_arr / dist_arr)
-
-def float_list(a):
-	return [float(x) for x in a]
-
-def to_deg(ra,dec):
-	
-	c = SkyCoord(ra, dec, unit=(u.hourangle, u.deg))
-
-	return c.ra.degree, c.dec.degree
-
-def mask_outliers(m_arr, m = 3.):
-
-    x = np.ma.copy(m_arr)	
-
-    d = np.abs(x - np.ma.median(x))
-    mdev = np.ma.median(d)
-    s = d / (float(mdev) if mdev else 1.)
-
-    x.mask[s>m] = True
-
-    return x
-	
-
-def fill_array(a, fillvalue = 0):
-
-	import itertools
-
-	return np.array(list(itertools.izip_longest(*a, fillvalue=fillvalue))).T
 

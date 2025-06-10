@@ -4,8 +4,9 @@ from astropy.table import Table,  hstack, vstack, unique, join
 import numpy as np
 from astropy.io import ascii
 #from constants import *
-from functions import *
+from methods import *
 from args import *
+import pandas as pd
 
 def read_viztab(cat):
 
@@ -73,12 +74,7 @@ class PreProcess(object):
                           tab = self.read_vtab(cat)
                          else:
                           tab = self.read_xtab(cat)
-                          
-                         try:	
-                          tab['RA'], tab['DEC'] = to_deg(tab['RAh'],tab['DEC'])
-                         except:
-                          pass                          
-                     
+
                          tabs.append(tab)
                          
                         vstab = vstack(tabs)

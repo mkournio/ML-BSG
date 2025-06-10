@@ -1,5 +1,5 @@
 from tables import *
-from functions import *
+from methods import *
 import args 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -8,30 +8,16 @@ from astroquery.simbad import Simbad
 import os
 from astropy.coordinates import SkyCoord
 from constants import *
-
-#EM = EvolutionaryModels()
-#data['MEVOL'] = EM.interp2d('logTe', 'logg', 'Mass', data['TEFF'], data['LOGG'], post_rsg = False, method='linear')
-
-###### SPECTROSCOPIC HR DIAGRAM
-#EM.plot_spectroHR(data, output_format = 'pdf', output_name = 's_hrdiag', hold = False, inter = False)
-#x_range = np.arange(3.6,4.9,0.1)
-#f = lambda x, gamma : 4 * x - np.ma.log10(gamma / (KAPPA * SBOLTZ / Ccm))
-#g1, = EM.ax.plot(x_range,f(x_range, 1),'r-', lw = 2)
-#g06, = EM.ax.plot(x_range,f(x_range, 0.6),'r:', lw = 2)
-#EM.ax.legend([g1, g06], [ r'$\Gamma = 1$',r'$\Gamma = 0.6$'])444
-#EM.panel.PanelClose()
-
-EVOL_TRACKS_PATH = 'input/tracks/r04/'
-dict_tr = {}
-_tracks = os.listdir(EVOL_TRACKS_PATH)
+import pandas as pd
 
 xc = PreProcess(args).compile()
 GDW =  [(not any(y in x for y in ('III','V','O9','A0','A1','A2','A3','ON','OC'))) or ('LBV' in x) for x in xc['SpC']]
 xc = xc[GDW];
+
 cm = PostProcess(xc).xmatch().append('combined')
 cm.sort(['RA'])
 
-print(cm['STAR','SpC','GAL','REF','Kmag','Gmag','DIST','GDIST','MK','MG'].pprint(max_lines=-1))
+print(cm['STAR','BPmag','RPmag','Jmag','Kmag','BR','JK'].pprint(max_lines=-1))
 
 
 LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]
@@ -57,7 +43,7 @@ plt.show()
 #plt.plot(cm['TEFF'],cm['SLOGL'],'rx'); plt.xlabel(r'T$_{eff}$'); plt.ylabel(r'log(T$_{eff}^4$/g [$L_{\odot}$])'); plt.xlabel(r'T$_{eff}$ [K]'); plt.gca().invert_xaxis() ; plt.show()
 
 cm = cm[(cm['MK']<-2.5)]; cm.sort(['RA'])
-print(cm['STAR','SpC','RA','DEC','REF','DIST','GDIST','MK'].pprint(max_lines=-1))
+print(cm['STAR','SpC','RA','DEC','REF','DIST','GDIST','MK','TIC'].pprint(max_lines=-1))
 
 LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]
 cLBV = [('LBV?' in x) for x in cm['SpC']]

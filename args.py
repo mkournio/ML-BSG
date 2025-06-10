@@ -1,8 +1,8 @@
 import numpy as np
-from functions import *
+from methods import *
 
 # INITIAL CATALOGS TO COMBILE FROM SORTED BY PREFERENCE IN DOUBLE ENTRIES
-INI_CATS = ['EMS','SIMBAD-LBVs','vizier:J/A+A/687/A228/tabled1','WESMAYER+22','SEARLE+08','McERLEAN+99','CROWTHER+06','FIRNSTEIN+12', 'FRASER+10', 'HAUCKE+19','SIMBAD-BSGs']
+INI_CATS = ['EMS','SIMBAD-LBVs','deBURGOS+24','WESMAYER+22','SEARLE+08','McERLEAN+99','CROWTHER+06','FIRNSTEIN+12', 'FRASER+10', 'HAUCKE+19','SIMBAD-BSGs']
         
 XM_CATS = {
           'vizier:IV/38/tic' : ['TIC','Tmag'],
@@ -30,15 +30,15 @@ RENAME_COLS = {
           }
           
 APPEND_COLS= {
-          'EMS': {**sbcoord_d('RA','DEC',keys=['STAR']), **pow10('TEFF','TEFF2',keys=['LTEFF','LTEFF2'])},
+          'EMS': {**sbcoord_d('RA','DEC', keys=['STAR']), **pow10('TEFF','TEFF2',keys=['LTEFF','LTEFF2'])},
           'FIRNSTEIN+12': {'REF': 'F12', 'GAL': 'MW', **sbcoord_d('RA','DEC',keys=['STAR'])},
           'SEARLE+08': {'REF': 'S08', 'GAL': 'MW', **sbcoord_d('RA','DEC',keys=['STAR'])},
           'McERLEAN+99': {'REF': 'M99', 'GAL': 'MW', **sbcoord_d('RA','DEC',keys=['STAR'])},
           'WESMAYER+22': {'REF': 'W22', 'GAL': 'MW', **sbcoord_d('RA','DEC',keys=['STAR'])},
           'CROWTHER+06': {'REF': 'C06', 'GAL': 'MW', **sbcoord_d('RA','DEC',keys=['STAR'])},
-          'FRASER+10' : {'REF': 'F10', 'GAL': 'MW', 'e_TEFF': 1000, 'E_TEFF': 1000, 'e_LOGG': 0.1, 'E_LOGG': 0.1},
-          'HAUCKE+19' : {'REF': 'H19', 'GAL': 'MW', 'E_TEFF': lambda x: x['e_TEFF'], 'E_LOGG': lambda x: x['e_LOGG']},
-          'vizier:J/A+A/687/A228/tabled1' : {'REF': 'D24', 'GAL': 'MW'},
+          'FRASER+10' : {'REF': 'F10', 'GAL': 'MW', **coord_h2d('RA','DEC',keys=['RAh','DEC']), 'e_TEFF': 1000, 'e_LOGG': 0.1},
+          'HAUCKE+19' : {'REF': 'H19', 'GAL': 'MW', **coord_h2d('RA','DEC',keys=['RAh','DEC'])},
+          'deBURGOS+24' : {'REF': 'D24', 'GAL': 'MW', **meancol('e_TEFF', 'e_LOGG', keys=[['e_TEFF','E_TEFF'],['e_LOGG','E_LOGG']])},
           'vizier:I/311/hip2' : {'HDIST': lambda x: 1./(1e-3*x['Plx'])},
           'SIMBAD-BSGs': {'REF': 'SMB'},
           'SIMBAD-LBVs': {'REF': 'SMB', **galloc('GAL',keys=['RA','DEC'])},
@@ -46,9 +46,8 @@ APPEND_COLS= {
                       **galcoord('GLON','GLAT',keys=['RA','DEC']),
                       **dist('DIST',keys=['GAL','GDIST']),
                       **absmag('MK','MG',keys=['Kmag','Gmag','DIST']),
-                      'BR' : lambda x: x['BPmag']-x['RPmag'],
-                      'JK' : lambda x: x['Jmag']-x['Kmag'],
-                      **slogl('SLOGL',keys=['TEFF','LOGG'])
+                      **diffcol('BR','JK',keys=[['BPmag','RPmag'],['Jmag','Kmag']]),
+                      **slogl('SLOGL',keys=['TEFF','LOGG']),
                       }
           }	
           
