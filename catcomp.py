@@ -9,13 +9,20 @@ import os
 from astropy.coordinates import SkyCoord
 from constants import *
 import pandas as pd
+from tess import *
+
 
 xc = PreProcess(args).compile()
 GDW =  [(not any(y in x for y in ('III','V','O9','A0','A1','A2','A3','ON','OC'))) or ('LBV' in x) for x in xc['SpC']]
 xc = xc[GDW];
 
-cm = PostProcess(xc).xmatch().append('combined')
-cm.sort(['RA'])
+cm = PostProcess(xc).xmatch().append('combined'); cm.sort(['RA'])
+EMS = [('LBV' in x) or ('B[e]SG' in x) for x in cm['SpC']]
+
+mast_query(cm[EMS][:3], download_dir='data/', products = ["ffi", "Lightcurve"])
+
+'''
+
 
 print(cm['STAR','BPmag','RPmag','Jmag','Kmag','BR','JK'].pprint(max_lines=-1))
 
@@ -101,6 +108,6 @@ plt.show()
 #plt.show()
 
 
-
+'''
 
 
