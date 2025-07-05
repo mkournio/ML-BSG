@@ -90,7 +90,7 @@ def dist(*nc,keys):
 
 @dict_func            
 def absmag(*nc,keys):
-
+      np.seterr(divide = 'ignore') 
       d = keys[-1]
       keys = keys[:-1]
       

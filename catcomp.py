@@ -17,14 +17,16 @@ GDW =  [(not any(y in x for y in ('III','V','O9','A0','A1','A2','A3','ON','OC'))
 xc = xc[GDW];
 
 cm = PostProcess(xc).xmatch().append('combined'); cm.sort(['RA'])
-EMS = [('LBV' in x) or ('B[e]SG' in x) for x in cm['SpC']]
+EMS = [('B[e]SG' in x) for x in cm['SpC']]
+cm = cm[EMS]
 
-mast_query(cm[EMS][:3], download_dir='data/', products = ["ffi", "Lightcurve"])
+LCs = TessLightcurves(data=cm[-50:],plot_name='ems_tess',output_format='eps').extract(save_lcs = False)
+
 
 '''
 
-
-print(cm['STAR','BPmag','RPmag','Jmag','Kmag','BR','JK'].pprint(max_lines=-1))
+#print(cm['STAR','BPmag','RPmag','Jmag','Kmag','BR','JK'].pprint(max_lines=-1))
+#mast_query(cm, download_dir='data/', products = ["Lightcurve","ffi"])
 
 
 LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]
@@ -43,7 +45,6 @@ for g, p in GALAXIES.items():
  plt.gca().add_patch(c)
  plt.text(p['RA'], p['DEC'], g, c='r', fontsize=8)
 
-plt.show()
 
 
 #print(cm['STAR','SpC','RA','DEC','Gmag','GDIST','MG','SLOGL','REF'].pprint(max_lines=-1))
@@ -67,6 +68,8 @@ plt.plot(cm['BR'][cBRC],cm['MG'][cBRC],**plot_cBRC)
 plt.gca().invert_yaxis() 
 plt.show()
 
+'''
+'''
 plt.plot(cm['JK'],cm['MK'],**plot_all); plt.xlabel(r'J-K'); plt.ylabel(r'M$_{K}$')  
 plt.plot(cm['JK'][DR24],cm['MK'][DR24],'rx')
 plt.plot(cm['JK'][LBV],cm['MK'][LBV],**plot_LBV)
