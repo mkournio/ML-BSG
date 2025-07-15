@@ -1,11 +1,10 @@
 import lightkurve as lk
 import numpy as np
 import os
-from constants.paths import *  
-from constants.styles import *
+from constants import *
 from methods.functions import *
 from methods.plot import GridTemplate
-
+from methods.tools import FitsObject
 
 #class GridTemplate(object):
  #       pass
@@ -36,7 +35,7 @@ class TessLightcurves(GridTemplate):
             os.makedirs(path_to_lcs)
          
      if type == 'SPOC':
-         return self._extract_spoc(**kwargs)     
+         self._extract_spoc(**kwargs)     
      else:
          pass
      
@@ -44,13 +43,18 @@ class TessLightcurves(GridTemplate):
      
      return
      
-    def _extract_spoc(self,**kwargs):
+    def _extract_spoc(self, time_bin_size = None,**kwargs):
         
         stars = self.data['STAR']
         tics = self.data['TIC']
         spcs = self.data['SpC']
 
         for star, spc, tic in zip(stars,spcs,tics):
+            
+         if kwargs.get('save_fits'):
+          filename = os.path.join(path_to_fits,'{}_{}.fits'.format(star,tic))
+          ff = FitsObject(filename)
+            
          files = [f for f in self.fSPOC if str(tic) in f]
          sects = [int(f.split('-')[1][1:]) for f in files]
          
@@ -59,37 +63,49 @@ class TessLightcurves(GridTemplate):
              s_sects,s_files = zip(*sorted(zip(sects,files)))
 
              for f, sect in zip(s_files,s_sects):
+            
+              print('{}: extracting Sector {} of TIC {} (SPOC)'.format(star,sect,tic))
+   
               fits = os.listdir(path_to_spoc_files + f)[0]
-              lc = lk.TessLightCurveFile(os.path.join(path_to_spoc_files + f,fits))
+              lc = lk.TessLightCurveFile(os.path.join(path_to_spoc_files + f,fits)).remove_nans().remove_outliers()
               
               ax_lc = self.GridAx()
 
               time = lc.time.value
               flux = lc["pdcsap_flux"].value
               flux_err = lc["pdcsap_flux_err"].value
+            #  ax_lc.plot(time,flux,'.',c = LC_COLOR['spoc'])
+              headargs = {'filetype': 'RAW'}
 
-              ax_lc.plot(time,flux,LC_COLOR['spoc'])
+
+              if time_bin_size is not None:
+                lc = lc.bin(time_bin_size = time_bin_size)
+                time = lc.time.value
+                flux = lc["pdcsap_flux"].value
+                flux_err = lc["pdcsap_flux_err"].value  
+                
+          #      ax_lc.plot(time,flux,c = LC_COLOR['spoc_binned'])
+                headargs['filetype'] = 'BINNED'
+                headargs['tbinsize'] = str(time_bin_size)
+
+              model_fit, norm, e_norm = fit_pol(time, flux, flux_err, deg=2, unit='mag')
+              ax_lc.plot(time,norm,'.',c = LC_COLOR['fit'])
+
+         #     ax_lc.plot(time_fit,model_fit,'--', c = LC_COLOR['fit'])
+
               ax_lc.text(0.05,0.85,star,color='r',fontsize=SIZE_FONT_SUB,transform=ax_lc.transAxes)
               ax_lc.text(0.05,0.05,spc,color='b',fontsize=SIZE_FONT_SUB,transform=ax_lc.transAxes)
               ax_lc.text(0.6,0.05,'{} ({})'.format(tic,sect),color='b',fontsize=SIZE_FONT_SUB,transform=ax_lc.transAxes)
-              
-              
-				#x_n, yfit,dm,e_dm= fit_pol(x_act,y_act,yerr_act,ndeg,unit='mag')
-				
 
-              
-              if kwargs.get('save_lcs'):
-                  filename = os.path.join(path_to_lcs,'%s_%s_DMAG_SPOC' % (star,sect))
-                  save_three_col(time,flux,flux_err,filename)
-                  
-       #  ssects, sfiles = zip(*sorted(zip(sects,files)))
-        # print(star,sfiles,ssects)    
-
-     
+              if kwargs.get('save_fits'): 
+                  ff.add_lc(time=time, flux=norm, flux_err=e_norm,\
+                            flux_column_name='DMAG', tess_lc_file = lc, **headargs)
          
-        
-        
-        
+         if kwargs.get('save_fits'): 
+             ff.close(overwrite=True)         
+
+        return 
+                  
         
 '''        
     def test(self):

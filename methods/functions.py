@@ -72,23 +72,22 @@ def radmass(logg,rad):
 ############# TESS LIGHTCURVES
 
 def fit_pol(x,y,yerr,deg,unit = 'mag'):
+    
+    mask_nan = np.isfinite(y)
+    y = np.ma.array(y, mask=~mask_nan)
+    p = np.poly1d(np.ma.polyfit(x, y, deg))
+    yfit = p(x)
+    
+    yfit_norm = y/yfit
+    e_yfit_norm = yerr/yfit
 
-	idx = np.isfinite(x) & np.isfinite(y)
-	x = x[idx]; y = y[idx]; yerr = yerr[idx]
+    dm = -2.5 * np.log10(yfit_norm)
+    e_dm = 2.5 * yerr / (LN10*y)
 
-	p = np.poly1d(np.polyfit(x, y, deg))
-	yfit = p(x)
-
-	yfit_norm = y/yfit
-	e_yfit_norm = yerr/yfit
-
-	dm = -2.5 * np.log10(yfit_norm)
-	e_dm = 2.5 * yerr / (LN10*y)
-
-	if unit == 'mag':
-		return x, yfit, dm, e_dm
-	elif unit == 'norm':
-		return x, yfit, ynorm, e_yfit_norm
+    if unit == 'mag':
+     return yfit, dm, e_dm
+    elif unit == 'norm':
+     return yfit, yfit_norm, e_yfit_norm
 
 def save_two_col(x,y,filename):
 

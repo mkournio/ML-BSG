@@ -1,5 +1,7 @@
 data/
 
+temp/
+
 output/
 
 other/
@@ -13,3 +15,7 @@ test*
 *.pdf
 
 TESS-cont/
+
+test/
+
+*.fits

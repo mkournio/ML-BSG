@@ -86,6 +86,8 @@ STY_LB = 	{
 
 LC_COLOR = 	{
 		'spoc'	 : 'c',
+        'spoc_binned': 'k',
 		'tesscut'	 : 'r',
+        'fit': 'k',
 		'any': 'k'
 		}

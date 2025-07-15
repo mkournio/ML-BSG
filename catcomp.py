@@ -14,13 +14,14 @@ from tess import *
 
 xc = PreProcess(args).compile()
 GDW =  [(not any(y in x for y in ('III','V','O9','A0','A1','A2','A3','ON','OC'))) or ('LBV' in x) for x in xc['SpC']]
-xc = xc[GDW];
+xc = xc[GDW]
 
-cm = PostProcess(xc).xmatch().append('combined'); cm.sort(['RA'])
-EMS = [('B[e]SG' in x) for x in cm['SpC']]
-cm = cm[EMS]
+cm = PostProcess(xc).xmatch().append('combined'); cm.sort(['STAR'])
+EMS = [('LBV' in x) or ('B[e]SG' in x) for x in cm['SpC']]
+cm = cm[cm['STAR']=='V439 Cyg']
 
-LCs = TessLightcurves(data=cm[-50:],plot_name='ems_tess',output_format='eps').extract(save_lcs = False)
+#cm.sort(['Tmag']); print(cm['STAR','RA','DEC','TIC','Tmag'].pprint(max_lines=-1,max_width=-1))
+LCs = TessLightcurves(data=cm,plot_name='ems_tess',output_format='eps').extract(time_bin_size = 0.02, save_fits = True)
 
 
 '''
