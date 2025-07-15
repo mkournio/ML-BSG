@@ -74,7 +74,7 @@ class TessLightcurves(GridTemplate):
               time = lc.time.value
               flux = lc["pdcsap_flux"].value
               flux_err = lc["pdcsap_flux_err"].value
-            #  ax_lc.plot(time,flux,'.',c = LC_COLOR['spoc'])
+              ax_lc.plot(time,flux,c = LC_COLOR['spoc'])
               headargs = {'filetype': 'RAW'}
 
 
@@ -84,22 +84,21 @@ class TessLightcurves(GridTemplate):
                 flux = lc["pdcsap_flux"].value
                 flux_err = lc["pdcsap_flux_err"].value  
                 
-          #      ax_lc.plot(time,flux,c = LC_COLOR['spoc_binned'])
+                ax_lc.plot(time,flux,c = LC_COLOR['spoc_binned'])
                 headargs['filetype'] = 'BINNED'
                 headargs['tbinsize'] = str(time_bin_size)
 
-              model_fit, norm, e_norm = fit_pol(time, flux, flux_err, deg=2, unit='mag')
-              ax_lc.plot(time,norm,'.',c = LC_COLOR['fit'])
+              model_fit, norm, norm_err = fit_pol(time, flux, flux_err, deg=2, mode='dmag')
+              ax_lc.plot(time,model_fit,'--', c = LC_COLOR['fit'])
 
-         #     ax_lc.plot(time_fit,model_fit,'--', c = LC_COLOR['fit'])
-
+              if kwargs.get('save_fits'): 
+                  ff.add_lc(time=time, flux=norm, flux_err=norm_err,\
+                            flux_column_name='dmag', tess_lc_file = lc, **headargs)
+                      
               ax_lc.text(0.05,0.85,star,color='r',fontsize=SIZE_FONT_SUB,transform=ax_lc.transAxes)
               ax_lc.text(0.05,0.05,spc,color='b',fontsize=SIZE_FONT_SUB,transform=ax_lc.transAxes)
               ax_lc.text(0.6,0.05,'{} ({})'.format(tic,sect),color='b',fontsize=SIZE_FONT_SUB,transform=ax_lc.transAxes)
 
-              if kwargs.get('save_fits'): 
-                  ff.add_lc(time=time, flux=norm, flux_err=e_norm,\
-                            flux_column_name='DMAG', tess_lc_file = lc, **headargs)
          
          if kwargs.get('save_fits'): 
              ff.close(overwrite=True)         

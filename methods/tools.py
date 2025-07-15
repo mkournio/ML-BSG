@@ -1,6 +1,7 @@
 from constants import *
 from astropy.io import fits
 import datetime
+import numpy as np
 
 class FitsObject(object):
 
@@ -27,11 +28,15 @@ class FitsObject(object):
                  time,
                  flux,
                  flux_err=None,
-                 flux_column_name='FLUX',
+                 flux_column_name='flux',
                  tess_lc_file = None,
                  **kwargs):
+       
+       if isinstance(flux, np.ma.MaskedArray):
+           flux = np.where(flux.mask,np.nan,flux)
       
        cols = []
+       flux_column_name = flux_column_name.upper()
        cols.append(fits.Column(name='TIME',format="D",unit='d',array=time))
        cols.append(fits.Column(name=flux_column_name,format="E",unit=flux_unit[flux_column_name],array=flux))
        if flux_err is not None :
@@ -58,30 +63,43 @@ class FitsObject(object):
 
        return
    
+      def add_aperture_from_spoc(self,tess_lc_file):
+       
+       aperture = np.array(tess_lc_file.hdu[2].data)
+       
+       # Convert flags to boolean
+       aperture = [[np.binary_repr(x, width = 8)[-2] == '1' for x in row] for row in aperture]
+       hdu = fits.ImageHDU(data=aperture,header=tess_lc_file.hdu[2].header)
+
+       self.hdu_list.append(hdu)
+       
+       return          
+   
       def _create_header_from_original(self, hdr,tess_lc_file):
           
-           header_p = tess_lc_file.hdu[0].header
-           header_b = tess_lc_file.hdu[1].header
+       header_p = tess_lc_file.hdu[0].header
+       header_b = tess_lc_file.hdu[1].header
            
-           for key in tess_header_keys_p :
-               try:
-                hdr[key] = header_p[key]
-               except:
-                pass              
+       for key in tess_header_keys_p :
+        try:
+         hdr[key] = header_p[key]
+        except:
+         pass              
            
-           for key in tess_header_keys_b :
-               try:
-                hdr[key] = header_b[key]
-               except:
-                pass    
+       for key in tess_header_keys_b :
+        try:
+         hdr[key] = header_b[key]
+        except:
+         pass    
             
-           return hdr
+       return hdr
       
       def close(self,overwrite=True):
       
        hdu_objs = fits.HDUList(self.hdu_list)  
        if self.fits_file is not None:
            hdu_objs.writeto(self.fits_file, overwrite=overwrite)
+       hdu_objs.close()
        
        return 
      
