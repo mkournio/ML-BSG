@@ -1,8 +1,103 @@
 from matplotlib.backends.backend_pdf import PdfPages
 from matplotlib.gridspec import GridSpec
 import matplotlib.pyplot as plt
+from matplotlib import patches
 from constants.styles import *
+from methods.tools import check_header_key
 import os
+from astropy.visualization import PercentileInterval, ImageNormalize, LinearStretch
+import numpy as np
+from astropy.io import fits
+import warnings
+import lightkurve as lk
+
+def plot_lc_single(lc, ax = None, m = '', flux_key ="pdcsap_flux", lc_type = 'any', **kwargs):
+    
+    if ax is None:
+     _, ax = plt.subplots()    
+     
+    if isinstance(lc, lk.LightCurve):
+        time = lc.time.value
+        flux = lc[flux_key].value
+        try:
+            flux_err = lc[flux_key+"_err"].value
+        except:
+            flux_err = np.zeros(len(flux))      
+    elif isinstance(lc, np.ndarray):
+        time = lc[0]
+        flux = lc[1]
+        if lc.shape[0] > 2:
+            flux_err = lc[2]   
+  
+    ax.plot(time,flux,m,c = LC_COLOR[lc_type])
+    
+    return ax
+
+def plot_lc_multi(lc, ax = None):
+    
+    return
+
+def plot_tess_field(field, ax = None, spoc_aperture = None, thr_aperture = None, **kwargs):
+    
+    # Plots TESS field from ImageHDU or ndarray
+    
+    frow, fcol = 0, 0
+    if isinstance(field,fits.ImageHDU):
+     frow = field.header['2CRV5P']
+     fcol = field.header['1CRV5P']
+     field = field.data
+    elif isinstance(field,np.ndarray):
+     pass 
+    else:
+     raise TypeError('Object field should be either ImageHDU or ndarray!')
+ 
+    extent = (fcol - 0.5, fcol + field.shape[1] - 0.5, 
+              frow - 0.5, frow + field.shape[0] - 0.5)
+
+    # Based on the LightKurve plot_image function  
+    if ax is None:
+     _, ax = plt.subplots()    
+    
+    mask = np.nan_to_num(field) > 0
+    if mask.any() > 0:
+      vmin, vmax = PercentileInterval(95.0).get_limits(field[mask])
+    else:
+      vmin, vmax = 0, 0
+    norm = ImageNormalize(vmin=vmin, vmax=vmax, stretch=LinearStretch(), clip=False)
+
+    ax.imshow(field, origin='lower', norm=norm, extent = extent, **kwargs)
+    
+    if spoc_aperture is not None:
+        if isinstance(spoc_aperture,fits.ImageHDU):
+            if check_header_key(spoc_aperture,'EXTNAME','APERTURE'):
+                ref_row, ref_col = spoc_aperture.header['CRVAL2P'], spoc_aperture.header['CRVAL1P']
+                ap_data = spoc_aperture.data
+                
+                # Convert TESS flags to boolean mask
+                ap_data = [[np.binary_repr(x, width = 8)[-2] == '1' for x in row] for row in ap_data]
+                
+                in_aperture = np.where(ap_data)
+                ap_row = in_aperture[0] + ref_row - 0.5
+                ap_col = in_aperture[1] + ref_col - 0.5
+                for ii in range(len(ap_row)):
+                    rect=patches.Rectangle((ap_col[ii],ap_row[ii]),1,1, fill=False, hatch="//", color=TESS_AP_C['spoc'])
+                    ax.add_patch(rect)
+            else:
+                warnings.warn('Invalid SPOC aperture provided.')
+        else:
+            warnings.warn('SPOC aperture has to be of fits.ImageHDU type.')
+                
+     
+                
+    #ax.set_xlabel(xlabel)
+    #ax.set_ylabel(ylabel)
+    #ax.set_title(title)
+   # if show_colorbar:
+    #    cbar = plt.colorbar(cax, ax=ax, label=clabel)
+     #   cbar.ax.yaxis.set_tick_params(tick1On=False, tick2On=False)
+      #  cbar.ax.minorticks_off()
+        
+    return ax
 
 
 class GridTemplate(object):

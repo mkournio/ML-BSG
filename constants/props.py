@@ -20,3 +20,6 @@ GALAXIES = {
            'M101':    {'RA': 210.8, 'DEC':  54.3, 'RAD':   1, 'D': 6400000},
            'NGC2363': {'RA': 112.1, 'DEC':  69.2, 'RAD': 0.2, 'D': 3420000}
            }
+
+#Degree for polynomial fit for detrending TESS data
+polyfit_deg = 2

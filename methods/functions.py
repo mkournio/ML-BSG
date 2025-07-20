@@ -71,23 +71,46 @@ def radmass(logg,rad):
 
 ############# TESS LIGHTCURVES
 
-def fit_pol(x,y,yerr,deg,mode = 'dmag'):
+def fit_pol(lc, deg, flux_key ="pdcsap_flux", mode = 'dmag'):
     
-    mask_nan = np.isfinite(y)
-    y = np.ma.array(y, mask=~mask_nan)
-    p = np.poly1d(np.ma.polyfit(x, y, deg))
-    yfit = p(x)
+    import lightkurve as lk
     
-    nflux = y/yfit
-    e_nflux = yerr/yfit
+    if isinstance(lc, lk.LightCurve):
+        time = lc.time.value
+        flux = lc[flux_key].value
+        try:
+            flux_err = lc[flux_key+"_err"].value
+        except:
+            flux_err = np.zeros(len(flux))
+            
+    elif isinstance(lc, np.ndarray):
+        time = lc[0]
+        flux = lc[1]
+        if lc.shape[0] > 2:
+            flux_err = lc[2]
+        else:
+            flux_err = np.zeros(len(flux))
+    
+    mask_nan = np.isfinite(flux)
+    flux = np.ma.array(flux, mask=~mask_nan)
+    p = np.poly1d(np.ma.polyfit(time, flux, deg))
+    flux_fit = p(time)
+    
+    nflux = flux/flux_fit
+    e_nflux = flux_err/flux_fit
+    
+    flux = np.where(nflux.mask,np.nan,nflux)
 
-    dm = -2.5 * np.log10(nflux)
-    e_dm = 2.5 * yerr / (LN10*y)
+    if mode == 'nflux':
+        new_lc = lk.LightCurve(time=time,flux=nflux,flux_err=e_nflux)
+        new_lc.add_column(flux_fit, name='model')
+    elif mode == 'dmag':
+        dm = -2.5 * np.log10(nflux)
+        e_dm = 2.5 * flux_err / (LN10*flux)
+        new_lc = lk.LightCurve(time=time,flux=dm,flux_err=e_dm)
+        new_lc.add_column(flux_fit, name='model')
 
-    if mode == 'dmag':
-     return yfit, dm, e_dm
-    elif mode == 'nflux':
-     return yfit, nflux, e_nflux
+    return new_lc
 
 def save_two_col(x,y,filename):
 

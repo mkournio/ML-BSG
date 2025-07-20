@@ -3,6 +3,13 @@ from astropy.io import fits
 import datetime
 import numpy as np
 
+def check_header_key(hdu,key,val):
+    if key in hdu.header:
+        return hdu.header[key] == val
+    else:
+        print('Header does not contain {} keyword'.format(str(key)))
+        return False
+    
 class FitsObject(object):
 
       from astropy.io import fits
@@ -55,21 +62,22 @@ class FitsObject(object):
 
        return
    
-      def add_field_from_tpf(self,tpf): 
-          
-       hdu = fits.ImageHDU(data=tpf[1].data['FLUX'][0],header=tpf[1].header)
-       hdu.header['TYPE'] = "FIELD"
+      def add_field_from_tpf(self,tpf_file,timestamp = 0): 
+       
+       tpf = fits.open(tpf_file)          
+       hdu = fits.ImageHDU(data=tpf[1].data['FLUX'][timestamp],header=tpf[1].header)
        self.hdu_list.append(hdu)      
 
        return
    
-      def add_aperture_from_spoc(self,tess_lc_file):
+      def add_aperture_from_spoc(self,tess_lc):
        
-       aperture = np.array(tess_lc_file.hdu[2].data)
-       
+       aperture = np.array(tess_lc.hdu[2].data)
+       sector = tess_lc.hdu[0].header['SECTOR']
        # Convert flags to boolean
-       aperture = [[np.binary_repr(x, width = 8)[-2] == '1' for x in row] for row in aperture]
-       hdu = fits.ImageHDU(data=aperture,header=tess_lc_file.hdu[2].header)
+       #aperture = [[np.binary_repr(x, width = 8)[-2] == '1' for x in row] for row in aperture]
+       hdu = fits.ImageHDU(data=aperture, header = tess_lc.hdu[2].header)
+       hdu.header['SECTOR'] = str(sector)
 
        self.hdu_list.append(hdu)
        

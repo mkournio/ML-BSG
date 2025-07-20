@@ -3,7 +3,7 @@ import numpy as np
 import os
 from constants import *
 from methods.functions import *
-from methods.plot import GridTemplate
+from methods.plot import *
 from methods.tools import FitsObject
 
 #class GridTemplate(object):
@@ -28,13 +28,13 @@ class TessLightcurves(GridTemplate):
     def _validate(self):
      pass
 
-    def extract(self, type = 'SPOC', **kwargs):        
+    def extract(self, mode = 'SPOC', **kwargs):        
         
      if kwargs.get('save_lcs') :         
          if not os.path.exists(path_to_lcs): 
             os.makedirs(path_to_lcs)
          
-     if type == 'SPOC':
+     if mode == 'SPOC':
          self._extract_spoc(**kwargs)     
      else:
          pass
@@ -48,12 +48,11 @@ class TessLightcurves(GridTemplate):
         stars = self.data['STAR']
         tics = self.data['TIC']
         spcs = self.data['SpC']
+        ras = self.data['RA']
+        decs = self.data['DEC']
 
-        for star, spc, tic in zip(stars,spcs,tics):
-            
-         if kwargs.get('save_fits'):
-          filename = os.path.join(path_to_fits,'{}_{}.fits'.format(star,tic))
-          ff = FitsObject(filename)
+
+        for star, spc, tic, ra, dec in zip(stars,spcs,tics,ras,decs):
             
          files = [f for f in self.fSPOC if str(tic) in f]
          sects = [int(f.split('-')[1][1:]) for f in files]
@@ -61,6 +60,11 @@ class TessLightcurves(GridTemplate):
          if len(files) > 0 : 
              
              s_sects,s_files = zip(*sorted(zip(sects,files)))
+             
+             filename = os.path.join(path_to_fits,'{}_{}.fits'.format(star,tic))
+             if kwargs.get('save_fits'):
+              ff = FitsObject(filename)
+              headargs={}
 
              for f, sect in zip(s_files,s_sects):
             
@@ -70,26 +74,20 @@ class TessLightcurves(GridTemplate):
               lc = lk.TessLightCurveFile(os.path.join(path_to_spoc_files + f,fits)).remove_nans().remove_outliers()
               
               ax_lc = self.GridAx()
-
-              time = lc.time.value
-              flux = lc["pdcsap_flux"].value
-              flux_err = lc["pdcsap_flux_err"].value
-              ax_lc.plot(time,flux,c = LC_COLOR['spoc'])
-              headargs = {'filetype': 'RAW'}
-
+              
+        #      plot_lc_single(lc, ax=ax_lc, lc_type = 'spoc', m = '.')
 
               if time_bin_size is not None:
                 lc = lc.bin(time_bin_size = time_bin_size)
-                time = lc.time.value
-                flux = lc["pdcsap_flux"].value
-                flux_err = lc["pdcsap_flux_err"].value  
-                
-                ax_lc.plot(time,flux,c = LC_COLOR['spoc_binned'])
-                headargs['filetype'] = 'BINNED'
-                headargs['tbinsize'] = str(time_bin_size)
+        #        plot_lc_single(lc, ax=ax_lc, lc_type = 'spoc_binned')
 
-              model_fit, norm, norm_err = fit_pol(time, flux, flux_err, deg=2, mode='dmag')
-              ax_lc.plot(time,model_fit,'--', c = LC_COLOR['fit'])
+           #     headargs['filetype']='BINNED'
+           #     headargs['tbinsize']=str(time_bin_size)
+
+              n_lc = fit_pol(lc, deg=polyfit_deg, mode='dmag')
+              plot_lc_single(n_lc, ax=ax_lc, flux_key = 'flux', lc_type = 'fit')
+
+            #  headargs['polfitdg'] = str(polyfit_deg)
 
               if kwargs.get('save_fits'): 
                   ff.add_lc(time=time, flux=norm, flux_err=norm_err,\
@@ -99,9 +97,23 @@ class TessLightcurves(GridTemplate):
               ax_lc.text(0.05,0.05,spc,color='b',fontsize=SIZE_FONT_SUB,transform=ax_lc.transAxes)
               ax_lc.text(0.6,0.05,'{} ({})'.format(tic,sect),color='b',fontsize=SIZE_FONT_SUB,transform=ax_lc.transAxes)
 
-         
-         if kwargs.get('save_fits'): 
-             ff.close(overwrite=True)         
+             if kwargs.get('save_fits'):
+                 
+               if kwargs.get('add_field'):
+                   
+                # Adds the field from the latest sector LC file   
+                ff.add_aperture_from_spoc(lc)
+                
+                ffi_files = [j for j in self.fFFI if (str(ra)[:5] in j) and (str(dec)[:5] in j)]
+                tpf_v = [f for f in ffi_files if int(f.split('-')[1][1:]) == sect]
+                if len(tpf_v) > 0:
+                    tpf_file = tpf_v[0]
+                else:
+                    tpf_file = ffi_files[0]
+           
+                ff.add_field_from_tpf(path_to_tesscut_files + tpf_file)
+                
+               ff.close(overwrite=True)         
 
         return 
                   
