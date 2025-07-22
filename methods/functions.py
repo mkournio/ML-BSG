@@ -99,16 +99,18 @@ def fit_pol(lc, deg, flux_key ="pdcsap_flux", mode = 'dmag'):
     nflux = flux/flux_fit
     e_nflux = flux_err/flux_fit
     
-    flux = np.where(nflux.mask,np.nan,nflux)
+    nflux = np.where(nflux.mask,np.nan,nflux)
 
     if mode == 'nflux':
-        new_lc = lk.LightCurve(time=time,flux=nflux,flux_err=e_nflux)
-        new_lc.add_column(flux_fit, name='model')
+        new_lc = lk.LightCurve(time=time)
+        new_lc.add_columns([nflux,e_nflux,flux_fit],
+                           names=['nflux','nflux_err','model'])
     elif mode == 'dmag':
         dm = -2.5 * np.log10(nflux)
         e_dm = 2.5 * flux_err / (LN10*flux)
-        new_lc = lk.LightCurve(time=time,flux=dm,flux_err=e_dm)
-        new_lc.add_column(flux_fit, name='model')
+        new_lc = lk.LightCurve(time=time)
+        new_lc.add_columns([dm,e_dm,flux_fit],
+                           names=['dmag','dmag_err','model'])
 
     return new_lc
 

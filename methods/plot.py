@@ -11,7 +11,12 @@ from astropy.io import fits
 import warnings
 import lightkurve as lk
 
-def plot_lc_single(lc, ax = None, m = '', flux_key ="pdcsap_flux", lc_type = 'any', **kwargs):
+def plot_lc_single(lc, 
+                   ax = None,
+                   m = '',
+                   flux_key ="pdcsap_flux",
+                   lc_type = 'any',
+                   **kwargs):
     
     if ax is None:
      _, ax = plt.subplots()    
@@ -22,18 +27,27 @@ def plot_lc_single(lc, ax = None, m = '', flux_key ="pdcsap_flux", lc_type = 'an
         try:
             flux_err = lc[flux_key+"_err"].value
         except:
-            flux_err = np.zeros(len(flux))      
+            flux_err = np.zeros(len(flux)) 
+    elif isinstance(lc, fits.BinTableHDU):
+        time = lc.data['time']
+        flux = lc.data[flux_key]
+        try:
+            flux_err = lc.data[flux_key+"_err"]
+        except:
+            flux_err = np.zeros(len(flux)) 
     elif isinstance(lc, np.ndarray):
         time = lc[0]
         flux = lc[1]
         if lc.shape[0] > 2:
-            flux_err = lc[2]   
-  
+            flux_err = lc[2]
+    else:
+        raise TypeError('Object light curve does not have supportive format!')
+
     ax.plot(time,flux,m,c = LC_COLOR[lc_type])
     
     return ax
 
-def plot_lc_multi(lc, ax = None):
+def plot_lc_multi(lc, ax = None, **kwargs):
     
     return
 
@@ -47,6 +61,7 @@ def plot_tess_field(field, ax = None, spoc_aperture = None, thr_aperture = None,
      fcol = field.header['1CRV5P']
      field = field.data
     elif isinstance(field,np.ndarray):
+     #TODO
      pass 
     else:
      raise TypeError('Object field should be either ImageHDU or ndarray!')
@@ -99,7 +114,17 @@ def plot_tess_field(field, ax = None, spoc_aperture = None, thr_aperture = None,
         
     return ax
 
+def add_plot_features(ax,mode = 'flux',upper_left='',lower_left='',lower_right=''):
+    
+    ax.text(0.05,0.85,upper_left,color='r',fontsize=SIZE_FONT_SUB,transform=ax.transAxes)
+    ax.text(0.05,0.05,lower_left,color='b',fontsize=SIZE_FONT_SUB,transform=ax.transAxes)
+    ax.text(0.6,0.05,lower_right,color='b',fontsize=SIZE_FONT_SUB,transform=ax.transAxes)
+  
+    if mode == 'dmag': ax.invert_yaxis()
 
+    return ax
+   
+    
 class GridTemplate(object):
 
 	# Class for the creation and management of plotting grid

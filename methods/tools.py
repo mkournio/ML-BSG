@@ -2,6 +2,8 @@ from constants import *
 from astropy.io import fits
 import datetime
 import numpy as np
+import lightkurve as lk
+import warnings
 
 def check_header_key(hdu,key,val):
     if key in hdu.header:
@@ -10,6 +12,42 @@ def check_header_key(hdu,key,val):
         print('Header does not contain {} keyword'.format(str(key)))
         return False
     
+def get_hdu_from_keys(hdulist,**kwargs):
+    
+    if kwargs == {}:
+        return None
+    
+    hdu=[]
+    for i in hdulist:
+        
+        f = 0
+        hdr = i.header
+        for key, value in kwargs.items():
+            if key in hdr and hdr[key] == value:
+                f += 1
+        if f == len(kwargs):
+            hdu.append(i)
+            
+    if len(hdu) == 0:
+        
+        return None
+    else:
+        if len(hdu) > 1:
+            warnings.warn('More than 1 headers found; returned the first.')
+            
+        return hdu[0]  
+      
+def get_sectors_from_hdulist(hdulist,**kwargs):
+    
+    sectors = []
+    for h in hdulist:
+        try:
+            sectors.append(int(h.header['SECTOR']))
+        except:
+            pass
+        
+    return sorted(set(sectors))
+
 class FitsObject(object):
 
       from astropy.io import fits
@@ -32,28 +70,42 @@ class FitsObject(object):
        return
         
       def add_lc(self,
-                 time,
-                 flux,
-                 flux_err=None,
-                 flux_column_name='flux',
-                 tess_lc_file = None,
+                 lc,
+                 flux_key='flux',
+                 header_source = None,
                  **kwargs):
+          
+          
+       if isinstance(lc, lk.LightCurve):
+           time = lc.time.value
+           flux = lc[flux_key].value
+           try:
+               flux_err = lc[flux_key+"_err"].value
+           except:
+               flux_err = None
+       elif isinstance(lc, np.ndarray):
+           time = lc[0]
+           flux = lc[1]
+           if lc.shape[0] > 2:
+               flux_err = lc[2]
+           else:
+               flux_err = None
        
        if isinstance(flux, np.ma.MaskedArray):
            flux = np.where(flux.mask,np.nan,flux)
       
        cols = []
-       flux_column_name = flux_column_name.upper()
+       flux_key = flux_key.upper()
        cols.append(fits.Column(name='TIME',format="D",unit='d',array=time))
-       cols.append(fits.Column(name=flux_column_name,format="E",unit=flux_unit[flux_column_name],array=flux))
+       cols.append(fits.Column(name=flux_key,format="E",unit=flux_unit[flux_key],array=flux))
        if flux_err is not None :
-        cols.append(fits.Column(name=flux_column_name+'_ERR',format="E",unit=flux_unit[flux_column_name],array=flux_err))
+        cols.append(fits.Column(name=flux_key+'_ERR',format="E",unit=flux_unit[flux_key],array=flux_err))
         
        coldefs = fits.ColDefs(cols)
        hdu = fits.BinTableHDU.from_columns(coldefs) 
 
-       if tess_lc_file is not None:
-           hdu.header = self._create_header_from_original(hdu.header,tess_lc_file)
+       if header_source is not None:
+           hdu.header = self._create_header_from_original(hdu.header,header_source)
        
        for key in kwargs:
          hdu.header["{}".format(key).upper()] = kwargs[key]

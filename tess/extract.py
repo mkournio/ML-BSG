@@ -6,10 +6,9 @@ from methods.functions import *
 from methods.plot import *
 from methods.tools import FitsObject
 
-#class GridTemplate(object):
- #       pass
-
-class TessLightcurves(GridTemplate):
+class ExtractLightcurves(GridTemplate):
+    
+    # Class for 
 
     def __init__(self, data, rows_page = 5, **kwargs):
 
@@ -18,11 +17,8 @@ class TessLightcurves(GridTemplate):
 
      self.fSPOC = os.listdir(path_to_spoc_files)
      self.fFFI = os.listdir(path_to_tesscut_files)
-     super(TessLightcurves,self).__init__(rows_page = PLOT_XLC_NROW,\
-                                          cols_page = PLOT_XLC_NCOL,\
-                                          fig_xlabel= PLOT_XLABEL['lc'],\
-                                          fig_ylabel='',\
-                                          **kwargs)	 
+     super().__init__(rows_page = PLOT_XLC_NROW, cols_page = PLOT_XLC_NCOL,
+                      fig_xlabel= PLOT_XLABEL['lc'], fig_ylabel='', **kwargs)	 
      #self._extract_LCs(**kwargs)
 
     def _validate(self):
@@ -64,7 +60,6 @@ class TessLightcurves(GridTemplate):
              filename = os.path.join(path_to_fits,'{}_{}.fits'.format(star,tic))
              if kwargs.get('save_fits'):
               ff = FitsObject(filename)
-              headargs={}
 
              for f, sect in zip(s_files,s_sects):
             
@@ -72,31 +67,27 @@ class TessLightcurves(GridTemplate):
    
               fits = os.listdir(path_to_spoc_files + f)[0]
               lc = lk.TessLightCurveFile(os.path.join(path_to_spoc_files + f,fits)).remove_nans().remove_outliers()
-              
+              if kwargs.get('save_fits'): 
+                  ff.add_lc(lc, header_source = lc, flux_key = 'flux', binning = 'RAW')
+             
               ax_lc = self.GridAx()
               
-        #      plot_lc_single(lc, ax=ax_lc, lc_type = 'spoc', m = '.')
-
+              plot_lc_single(lc, ax=ax_lc, lc_type = 'spoc', m = '.')
               if time_bin_size is not None:
                 lc = lc.bin(time_bin_size = time_bin_size)
-        #        plot_lc_single(lc, ax=ax_lc, lc_type = 'spoc_binned')
-
-           #     headargs['filetype']='BINNED'
-           #     headargs['tbinsize']=str(time_bin_size)
+                plot_lc_single(lc, ax=ax_lc, lc_type = 'spoc_binned')
 
               n_lc = fit_pol(lc, deg=polyfit_deg, mode='dmag')
-              plot_lc_single(n_lc, ax=ax_lc, flux_key = 'flux', lc_type = 'fit')
+              plot_lc_single(n_lc, ax=ax_lc, flux_key = 'model', m = '--', lc_type = 'fit')
 
-            #  headargs['polfitdg'] = str(polyfit_deg)
+              add_plot_features(ax=ax_lc, mode = 'flux',upper_left=star,
+                                lower_left=spc,lower_right='{} ({})'.format(tic,sect))        
 
               if kwargs.get('save_fits'): 
-                  ff.add_lc(time=time, flux=norm, flux_err=norm_err,\
-                            flux_column_name='dmag', tess_lc_file = lc, **headargs)
-                      
-              ax_lc.text(0.05,0.85,star,color='r',fontsize=SIZE_FONT_SUB,transform=ax_lc.transAxes)
-              ax_lc.text(0.05,0.05,spc,color='b',fontsize=SIZE_FONT_SUB,transform=ax_lc.transAxes)
-              ax_lc.text(0.6,0.05,'{} ({})'.format(tic,sect),color='b',fontsize=SIZE_FONT_SUB,transform=ax_lc.transAxes)
-
+                  ff.add_lc(n_lc, header_source = lc, flux_key = 'dmag', 
+                            binning = str(time_bin_size), polfitdg = str(polyfit_deg))
+         
+ 
              if kwargs.get('save_fits'):
                  
                if kwargs.get('add_field'):

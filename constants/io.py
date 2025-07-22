@@ -9,6 +9,7 @@ tess_header_keys_b = ['BJDREFI','TIMEDEL','CROWDSAP','FLFRCSAP','PDCVAR']
 
 flux_unit = {
     'FLUX': 'e-/s',
+    'MODEL': 'e-/s',
     'NFLUX': '',
     'DMAG': 'mag'
     }
