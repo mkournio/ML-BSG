@@ -18,9 +18,11 @@ class Visualize(GridTemplate):
     
     # Class for 
 
-    def __init__(self, data, rows_page = 5, **kwargs):
+    def __init__(self, data, plot_key = 'flux',**kwargs):
 
      self.data = data
+     self.plot_key = plot_key
+
    #  self._validate()
 
      super().__init__(rows_page = PLOT_XLC_NROW, cols_page = PLOT_XLC_NCOL,
@@ -43,10 +45,17 @@ class Visualize(GridTemplate):
         if len(filename) > 0:
             hdulist = fits.open(os.path.join(path_to_fits,filename[0]))
             sectors = get_sectors_from_hdulist(hdulist)
-            for s in sectors:
-                hdu = get_hdu_from_keys(hdulist, SECTOR = s, TTYPE2 = 'DMAG')
+            for sect in sectors:
+                hdu_raw = get_hdu_from_keys(hdulist, SECTOR = sect, BINNING = 'F')
+                hdu_bin = get_hdu_from_keys(hdulist, SECTOR = sect, BINNING = 'T')
+
                 ax = self.GridAx()
-                plot_lc_single(hdu, ax=ax, flux_key ="dmag", lc_type = 'spoc_binned')
+                plot_lc_single(hdu_raw, ax=ax, m='.', flux_key = self.plot_key, lc_type = 'spoc')
+                plot_lc_single(hdu_bin, ax=ax, flux_key = self.plot_key, lc_type = 'spoc_binned')
+                
+                add_plot_features(ax=ax, mode = self.plot_key, upper_left=star,
+                                  lower_left=spc,lower_right='{} ({})'.format(tic,sect))   
+
         else:
             print('Star {} not found in database'.format(star))
             

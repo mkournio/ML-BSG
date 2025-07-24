@@ -19,13 +19,14 @@ xc = xc[GDW]
 cm = PostProcess(xc).xmatch().append('combined'); cm.sort(['STAR'])
 EMS = [('LBV' in x) or ('B[e]SG' in x) for x in cm['SpC']]
 cm = cm[EMS]
-cm = cm[(cm['GAL'] == 'MW')]; cm.sort(['STAR'])
+#cm = cm[(cm['GAL'] == 'MW')]; cm.sort(['STAR'])
 #
-#cm = cm[cm['STAR']=='V439 Cyg']
+cm = cm[cm['STAR']=='V439 Cyg']
 
 #cm.sort(['Tmag']); print(cm['STAR','RA','DEC','TIC','Tmag'].pprint(max_lines=-1,max_width=-1))
-#LCs = ExtractLightcurves(data=cm,plot_name='ems_tess',output_format='eps').extract(time_bin_size = 0.02, add_field = True, save_fits = True)
-Visualize(data=cm).lightcurves()
+#LCs = Extract(data=cm, plot_key='dmag', plot_name='ems_tess', output_format='eps')
+#LCs.lightcurves(time_bin_size = 0.02, extract_field = True, save_fits = True)
+Visualize(data=cm, plot_key='nflux').lightcurves()
 
 '''
 

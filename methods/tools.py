@@ -71,16 +71,14 @@ class FitsObject(object):
         
       def add_lc(self,
                  lc,
-                 flux_key='flux',
                  header_source = None,
                  **kwargs):
           
-          
        if isinstance(lc, lk.LightCurve):
            time = lc.time.value
-           flux = lc[flux_key].value
+           flux = lc.flux.value
            try:
-               flux_err = lc[flux_key+"_err"].value
+               flux_err = lc.flux_err.value
            except:
                flux_err = None
        elif isinstance(lc, np.ndarray):
@@ -93,14 +91,20 @@ class FitsObject(object):
        
        if isinstance(flux, np.ma.MaskedArray):
            flux = np.where(flux.mask,np.nan,flux)
-      
+
        cols = []
-       flux_key = flux_key.upper()
-       cols.append(fits.Column(name='TIME',format="D",unit='d',array=time))
-       cols.append(fits.Column(name=flux_key,format="E",unit=flux_unit[flux_key],array=flux))
+       cols.append(fits.Column(name='time',format="D",unit=flux_units['time'],array=time))
+       cols.append(fits.Column(name='flux',format="E",unit=flux_units['flux'],array=flux))
        if flux_err is not None :
-        cols.append(fits.Column(name=flux_key+'_ERR',format="E",unit=flux_unit[flux_key],array=flux_err))
+        cols.append(fits.Column(name='flux_err',format="E",unit=flux_units['flux_err'],array=flux_err))
         
+       #try:
+       extra_cols = [c for c in lc.columns if c not in ['time','flux','flux_err']]
+       for c in extra_cols:
+               cols.append(fits.Column(name=c,format="E",unit=flux_units[c],array=lc[c]))
+       #except:
+        #   pass           
+           
        coldefs = fits.ColDefs(cols)
        hdu = fits.BinTableHDU.from_columns(coldefs) 
 

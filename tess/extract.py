@@ -6,13 +6,14 @@ from methods.functions import *
 from methods.plot import *
 from methods.tools import FitsObject
 
-class ExtractLightcurves(GridTemplate):
+class Extract(GridTemplate):
     
     # Class for 
 
-    def __init__(self, data, rows_page = 5, **kwargs):
+    def __init__(self, data, plot_key = 'flux', **kwargs):
 
      self.data = data
+     self.plot_key = plot_key
      self._validate()
 
      self.fSPOC = os.listdir(path_to_spoc_files)
@@ -24,7 +25,7 @@ class ExtractLightcurves(GridTemplate):
     def _validate(self):
      pass
 
-    def extract(self, mode = 'SPOC', **kwargs):        
+    def lightcurves(self, mode = 'SPOC', **kwargs):        
         
      if kwargs.get('save_lcs') :         
          if not os.path.exists(path_to_lcs): 
@@ -47,7 +48,6 @@ class ExtractLightcurves(GridTemplate):
         ras = self.data['RA']
         decs = self.data['DEC']
 
-
         for star, spc, tic, ra, dec in zip(stars,spcs,tics,ras,decs):
             
          files = [f for f in self.fSPOC if str(tic) in f]
@@ -67,30 +67,37 @@ class ExtractLightcurves(GridTemplate):
    
               fits = os.listdir(path_to_spoc_files + f)[0]
               lc = lk.TessLightCurveFile(os.path.join(path_to_spoc_files + f,fits)).remove_nans().remove_outliers()
-              if kwargs.get('save_fits'): 
-                  ff.add_lc(lc, header_source = lc, flux_key = 'flux', binning = 'RAW')
              
               ax_lc = self.GridAx()
               
-              plot_lc_single(lc, ax=ax_lc, lc_type = 'spoc', m = '.')
+              # Normalize raw by the polynomial fitting the binned light curve              
+              bcoeff = None
               if time_bin_size is not None:
-                lc = lc.bin(time_bin_size = time_bin_size)
-                plot_lc_single(lc, ax=ax_lc, lc_type = 'spoc_binned')
-
-              n_lc = fit_pol(lc, deg=polyfit_deg, mode='dmag')
-              plot_lc_single(n_lc, ax=ax_lc, flux_key = 'model', m = '--', lc_type = 'fit')
-
-              add_plot_features(ax=ax_lc, mode = 'flux',upper_left=star,
-                                lower_left=spc,lower_right='{} ({})'.format(tic,sect))        
-
+                lcb = lc.bin(time_bin_size = time_bin_size) 
+                n_lcb, bcoeff = normalize(lcb)
+                
+              n_lc, _ = normalize(lc, coeff = bcoeff)
+                 
               if kwargs.get('save_fits'): 
-                  ff.add_lc(n_lc, header_source = lc, flux_key = 'dmag', 
-                            binning = str(time_bin_size), polfitdg = str(polyfit_deg))
-         
+                    ff.add_lc(n_lc, header_source = lc, binning = 'F')
+                    if time_bin_size is not None:
+                        ff.add_lc(n_lcb, header_source = lc, binning = 'T', binsize = str(time_bin_size))
+     
+              # Plot the lightcurves
+              plot_lc_single(n_lc, ax=ax_lc, flux_key = self.plot_key, lc_type = 'spoc', m = '.')              
+              if time_bin_size is not None:
+                  plot_lc_single(n_lcb, ax=ax_lc, flux_key = self.plot_key, lc_type = 'spoc_binned')
+                  
+              if self.plot_key == 'flux':
+                  plot_lc_single(n_lc, ax=ax_lc, flux_key = 'fitmodel', m = '--', lc_type = 'fit')
+              
+              add_plot_features(ax=ax_lc, mode = self.plot_key, upper_left=star,
+                                lower_left=spc,lower_right='{} ({})'.format(tic,sect))        
+     
  
              if kwargs.get('save_fits'):
                  
-               if kwargs.get('add_field'):
+               if kwargs.get('extract_field'):
                    
                 # Adds the field from the latest sector LC file   
                 ff.add_aperture_from_spoc(lc)

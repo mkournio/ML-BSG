@@ -7,9 +7,17 @@ tess_header_keys_b = ['BJDREFI','TIMEDEL','CROWDSAP','FLFRCSAP','PDCVAR']
 
 
 
-flux_unit = {
-    'FLUX': 'e-/s',
-    'MODEL': 'e-/s',
-    'NFLUX': '',
-    'DMAG': 'mag'
+flux_units = {
+    'time': 'd',
+    'flux': 'e-/s',
+    'flux_err': 'e-/s',
+    'fitmodel': 'e-/s',
+    'nflux': '',
+    'nflux_err': '',
+    'dmag': 'mag',
+    'dmag_err': 'mag',
+    
+    
     }
+
+'nflux','nflux_err','dmag','dmag_err','fitmodel'

@@ -14,9 +14,12 @@ import lightkurve as lk
 def plot_lc_single(lc, 
                    ax = None,
                    m = '',
-                   flux_key ="pdcsap_flux",
+                   flux_key ="flux",
                    lc_type = 'any',
                    **kwargs):
+    
+    if lc is None:
+        return
     
     if ax is None:
      _, ax = plt.subplots()    
