@@ -12,6 +12,8 @@ test*
 
 *.eps
 
+*.png
+
 *.pdf
 
 TESS-cont/
@@ -19,3 +21,5 @@ TESS-cont/
 test/
 
 *.fits
+
+*.zip

@@ -1,9 +1,11 @@
-from matplotlib.backends.backend_pdf import PdfPages
+from pypdf import PdfWriter
 from matplotlib.gridspec import GridSpec
+from mpl_toolkits.axes_grid1.axes_divider import make_axes_locatable
 import matplotlib.pyplot as plt
 from matplotlib import patches
 from constants.styles import *
 from methods.tools import check_header_key
+from methods.functions import round_to
 import os
 from astropy.visualization import PercentileInterval, ImageNormalize, LinearStretch
 import numpy as np
@@ -11,8 +13,8 @@ from astropy.io import fits
 import warnings
 import lightkurve as lk
 
-def plot_lc_single(lc, 
-                   ax = None,
+def plot_lc_single(ax, 
+                   lc,
                    m = '',
                    flux_key ="flux",
                    lc_type = 'any',
@@ -50,9 +52,38 @@ def plot_lc_single(lc,
     
     return ax
 
-def plot_lc_multi(lc, ax = None, **kwargs):
+def plot_lc_multi(axes,
+                  grouped_hdus,
+                  m = '',
+                  flux_key ="flux",
+                  lc_type = 'any',
+                  **kwargs):
     
-    return
+    if not isinstance(axes,list) and len(axes) != len(grouped_hdus):
+        raise TypeError('Size of grouped HDUs does not match that of axes.')
+   
+    for g_hdu, ax in zip(grouped_hdus,axes):
+        
+        g_times = np.empty(0); g_fluxes = np.empty(0); g_sects = []
+        for hdu in g_hdu:
+            
+            if flux_key == 'dmag':
+                offset = np.nanmedian(hdu.data[flux_key])
+            else:
+                offset = 0.
+            g_times = np.append(g_times,hdu.data['time'])
+            g_fluxes = np.append(g_fluxes,hdu.data[flux_key]-offset)
+            g_sects.append(hdu.header['SECTOR'])
+ 
+        g_sect_tx = '+'.join([str(x) for x in g_sects])
+        ax.plot(g_times, g_fluxes,m,c = LC_COLOR[lc_type])
+        ax.text(0.4,0.05,g_sect_tx,color='b',fontsize=SIZE_FONT_SUB,transform=ax.transAxes)
+        
+        x1_p = (2*g_times[0]+g_times[-1])/3.
+        x2_p = (2*g_times[-1]+g_times[0])/3.
+        ax.set_xticks([round_to(x1_p,5)[0], round_to(x2_p,5)[1]])
+        
+    return axes   
 
 def plot_tess_field(field, ax = None, spoc_aperture = None, thr_aperture = None, **kwargs):
     
@@ -117,21 +148,48 @@ def plot_tess_field(field, ax = None, spoc_aperture = None, thr_aperture = None,
         
     return ax
 
-def add_plot_features(ax,mode = 'flux',upper_left='',lower_left='',lower_right=''):
-    
-    ax.text(0.05,0.85,upper_left,color='r',fontsize=SIZE_FONT_SUB,transform=ax.transAxes)
-    ax.text(0.05,0.05,lower_left,color='b',fontsize=SIZE_FONT_SUB,transform=ax.transAxes)
-    ax.text(0.6,0.05,lower_right,color='b',fontsize=SIZE_FONT_SUB,transform=ax.transAxes)
+def add_plot_features(ax,mode = 'flux',upper_left='',lower_left='',lower_right='', upper_right='', y_min_max = None):
+     
+    if not isinstance(ax,list):
+        ax=[ax]
+                     
+    if y_min_max is not None:
+        ymin, ymax = y_min_max
+        r = 0.4 * (ymax - ymin)
+        for ax_d in ax:
+            ax_d.set_ylim(ymin-r, ymax+r)            
   
-    if mode == 'dmag': ax.invert_yaxis()
-
+    if mode == 'dmag':
+        for ax_d in ax:
+                     ax_d.invert_yaxis()            
+            
+    ax[0].text(0.05,0.85,upper_left,color='r',fontsize=SIZE_FONT_SUB,transform=ax[0].transAxes)
+    ax[0].text(0.05,0.05,lower_left,color='b',fontsize=SIZE_FONT_SUB,transform=ax[0].transAxes)
+    ax[0].text(0.6,0.05,lower_right,color='b',fontsize=SIZE_FONT_SUB,transform=ax[0].transAxes)
+    ax[0].text(0.6,0.85,upper_right,color='b',fontsize=SIZE_FONT_SUB,transform=ax[0].transAxes)  
+    
     return ax
-   
+
+def get_filename(fname,fformat):
+        
+        fl_id = 0 
+        while os.path.exists('%s_%s.%s' % (fname,fl_id,fformat)): 
+            fl_id += 1
+            
+        return '%s_%s.%s' % (fname,fl_id,fformat)
     
 class GridTemplate(object):
 
 	# Class for the creation and management of plotting grid
-    def __init__(self, rows_page = 3, cols_page = 1, output_format = 'pdf', params = PLOT_PARAMS['lc'], inter = False, figsize = SIZE_GRID, **kwargs):
+    def __init__(self,
+                 rows_page = 3,
+                 cols_page = 1,
+                 output_format = 'pdf',
+                 join_pages = False,
+                 params = PLOT_PARAMS['lc'],
+                 figsize = SIZE_GRID,
+                 inter = False,
+                 **kwargs):
 
         plt.rcParams.update(params)
         
@@ -141,16 +199,24 @@ class GridTemplate(object):
         self.output_format = output_format
         self.inter = inter
         self.figsize = figsize
+        self.join_pages = join_pages
         
         self.filename = kwargs.pop('plot_name','GridPlot')
         self.fig_xlabel  = kwargs.pop('fig_xlabel','X LABEL')
         self.fig_ylabel  = kwargs.pop('fig_ylabel','Y LABEL')
         self.coll_x = kwargs.pop('coll_x',False)
         self.coll_y = kwargs.pop('coll_y',False)
+        
+		#Initiating pdf book
+        if self.join_pages:
+          #  self.output_format = 'pdf'
+            self.pdf_list = []
 
         self.ind = 0
         
-    def GridAx(self):
+    def GridAx(self,
+               divide=False,
+               ndiv=2):
         
         # Returns the position axis on the grid when called from the child class
 
@@ -174,7 +240,7 @@ class GridTemplate(object):
                 self.gs.update(hspace=0.05)
         else:
             if 'col_labels' in self.__dict__:
-                ax.set_xlabel(STY_LB[self.col_labels[plot_col]])
+                ax.set_xlabel(STY_LB[self.col_labels[pl_ot_col]])
                 
         if plot_row == 0 and 'sup_xlabels' in self.__dict__:
             ax.set_title(self.sup_xlabels[plot_col])
@@ -190,18 +256,40 @@ class GridTemplate(object):
         if 'xlim' in self.__dict__: ax.set_xlim(self.xlim)
         if 'ylim' in self.__dict__: ax.set_ylim(self.ylim)
         
+        if divide:
+            ax = self._axis_divide(ax,ndiv)
+        
         self.ind += 1
         
         return ax
-   
-    def _get_filename(self):
-        
-        fl_id = 0 
-        while os.path.exists('%s_%s.%s' % (self.filename,fl_id,self.output_format)): 
-            fl_id += 1
-            
-        return '%s_%s' % (self.filename,fl_id)
     
+    def _axis_divide(self,ax,n,**kwargs):
+        
+        if n == 1:            
+            return [ax]
+        
+        ax_v = [ax]
+        d  = kwargs.pop('d', 0.02)
+        divider = make_axes_locatable(ax)       
+        for k in np.arange(0,n-1,1):            
+
+            axargs = dict(transform=ax.transAxes, color='k', clip_on=False)
+            ax.plot((1,1),(-d,+d), **axargs)
+            ax.plot((1,1),(1-d,1+d), **axargs)
+            ax.spines["right"].set_visible(False)
+            
+            ax = divider.append_axes("right", size="100%", pad=0.14)
+            
+            axargs.update(transform=ax.transAxes) 
+            ax.plot((0,0),(-d,+d), **axargs)
+            ax.plot((0,0),(1-d,1+d), **axargs)
+            ax.spines["left"].set_visible(False)
+            ax.tick_params(labelleft = False)
+            
+            ax_v.append(ax)            
+        
+        return ax_v
+  
     def _grid_new(self):
         
         #Create grid on new page
@@ -232,7 +320,28 @@ class GridTemplate(object):
         self.glob_ax.set_ylabel(self.fig_ylabel, fontsize = SIZE_YLABEL_FIG, labelpad=55)
         
         if self.output_format != None:
-            filename = '%s.%s' % (self._get_filename(),self.output_format)
-            self.fig.savefig('%s.%s' % (self._get_filename(),self.output_format), format = self.output_format,bbox_inches='tight')
+            
+            file = get_filename(self.filename,self.output_format)
+            self.fig.savefig(file, format = self.output_format, bbox_inches='tight')
+            if self.join_pages:
+                self.pdf_list.append(file)
+                 
+        return
+    
+    def close_plot(self):
+        
+        self._page_close()
+        if self.join_pages:
+            merger = PdfWriter()
+            for f in self.pdf_list:
+                merger.append(f)
+            merger.write(get_filename(self.filename+'_m','pdf'))
+            merger.close()
+            for r in self.pdf_list: 
+                os.remove(r)
             
         return
+        
+        
+        
+        

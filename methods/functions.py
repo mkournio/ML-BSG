@@ -34,6 +34,14 @@ def sedscal(rad,dist):
 def float_list(a):
 	return [float(x) for x in a]
 
+def round_to(x,ref):
+	import math
+
+	rounddown = int(math.floor(x / ref)) * ref
+	roundup = int(math.ceil(x / ref)) * ref	
+
+	return rounddown, roundup
+
 def to_deg(ra,dec):
 
 	from astropy.coordinates import SkyCoord

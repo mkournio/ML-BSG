@@ -21,12 +21,11 @@ EMS = [('LBV' in x) or ('B[e]SG' in x) for x in cm['SpC']]
 cm = cm[EMS]
 #cm = cm[(cm['GAL'] == 'MW')]; cm.sort(['STAR'])
 #
-cm = cm[cm['STAR']=='V439 Cyg']
-
+#cm = cm[-30:]
 #cm.sort(['Tmag']); print(cm['STAR','RA','DEC','TIC','Tmag'].pprint(max_lines=-1,max_width=-1))
-#LCs = Extract(data=cm, plot_key='dmag', plot_name='ems_tess', output_format='eps')
+#LCs = Extract(data=cm, plot_key='dmag', plot_name='ems_tess', join_pages = True, output_format='eps')
 #LCs.lightcurves(time_bin_size = 0.02, extract_field = True, save_fits = True)
-Visualize(data=cm, plot_key='nflux').lightcurves()
+Visualize(data=cm, plot_name='EMS_STICHED-test', plot_key='dmag', rows_page=5, cols_page=1,join_pages=True, output_format='eps').lightcurves(stitched=True)
 
 '''
 

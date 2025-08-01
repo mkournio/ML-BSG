@@ -19,7 +19,7 @@ class Extract(GridTemplate):
      self.fSPOC = os.listdir(path_to_spoc_files)
      self.fFFI = os.listdir(path_to_tesscut_files)
      super().__init__(rows_page = PLOT_XLC_NROW, cols_page = PLOT_XLC_NCOL,
-                      fig_xlabel= PLOT_XLABEL['lc'], fig_ylabel='', **kwargs)	 
+                      fig_xlabel= PLOT_XLABEL['lc'], fig_ylabel=PLOT_YLABEL[plot_key], **kwargs)	 
      #self._extract_LCs(**kwargs)
 
     def _validate(self):
@@ -36,7 +36,7 @@ class Extract(GridTemplate):
      else:
          pass
      
-     self._page_close()
+     self.close_plot()
      
      return
      
@@ -84,14 +84,14 @@ class Extract(GridTemplate):
                         ff.add_lc(n_lcb, header_source = lc, binning = 'T', binsize = str(time_bin_size))
      
               # Plot the lightcurves
-              plot_lc_single(n_lc, ax=ax_lc, flux_key = self.plot_key, lc_type = 'spoc', m = '.')              
+              plot_lc_single(ax_lc, n_lc, flux_key = self.plot_key, lc_type = 'spoc', m = '.')              
               if time_bin_size is not None:
-                  plot_lc_single(n_lcb, ax=ax_lc, flux_key = self.plot_key, lc_type = 'spoc_binned')
+                  plot_lc_single(ax_lc, n_lcb, flux_key = self.plot_key, lc_type = 'spoc_binned')
                   
               if self.plot_key == 'flux':
                   plot_lc_single(n_lc, ax=ax_lc, flux_key = 'fitmodel', m = '--', lc_type = 'fit')
               
-              add_plot_features(ax=ax_lc, mode = self.plot_key, upper_left=star,
+              add_plot_features(ax_lc, mode = self.plot_key, upper_left=star,
                                 lower_left=spc,lower_right='{} ({})'.format(tic,sect))        
      
  

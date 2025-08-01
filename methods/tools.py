@@ -48,6 +48,26 @@ def get_sectors_from_hdulist(hdulist,**kwargs):
         
     return sorted(set(sectors))
 
+def group_consecutive_hdus(hdulist,sectors):
+    
+    import more_itertools as mit    
+
+    if len(sectors) > 1:
+        return [list(group) for group in mit.consecutive_groups(hdulist, ordering = lambda x: sectors[hdulist.index(x)])]
+    else:
+        return [hdulist]
+    
+def get_minmax_flux(hdulist, flux_key):
+    
+    mins=[]; maxs=[]       
+    for hdu in hdulist:
+        std = np.nanstd(hdu.data[flux_key])
+        med = np.nanmedian(hdu.data[flux_key])
+        mins.append(med-3*std)
+        maxs.append(med+3*std)
+
+    return min(mins), max(maxs) 
+
 class FitsObject(object):
 
       from astropy.io import fits

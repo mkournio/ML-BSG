@@ -16,8 +16,4 @@ flux_units = {
     'nflux_err': '',
     'dmag': 'mag',
     'dmag_err': 'mag',
-    
-    
     }
-
-'nflux','nflux_err','dmag','dmag_err','fitmodel'

@@ -6,7 +6,6 @@ plot_BRC  = {'ms' : 13, 'c' : 'k', 'marker' : 's', 'mew': 1.5, 'ls': 'None', 'mf
 plot_cBRC  = {'ms' : 15, 'c' : 'k', 'marker' : '$\u2b1a$', 'ls': 'None', 'mfc' : 'None'}
 
 PLOT_XLC_NCOL = 2
-
 PLOT_XLC_NROW = 5
 
 PLOT_XLABEL =   { 
@@ -14,6 +13,15 @@ PLOT_XLABEL =   {
 		'ls' : r'Frequency [d$^{-1}$]',
 		'sed': r'Wavelength (A)'
 		}
+
+PLOT_YLABEL =   {
+    'flux' : 'Flux [e-/s]',
+    'nflux': 'Normalized flux',
+    'dmag' : r'$\Delta$m [mag]'
+    }
+        
+        
+        
 
 SIZE_FONT_SUB = 12
 SIZE_XLABEL_FIG = 22

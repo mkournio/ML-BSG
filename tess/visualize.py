@@ -16,77 +16,66 @@ from astropy.io import fits
 
 class Visualize(GridTemplate):
     
-    # Class for 
-
-    def __init__(self, data, plot_key = 'flux',**kwargs):
-
+    # Class for visualizing objects
+    
+    def __init__(self, 
+                 data, 
+                 plot_key = 'flux',
+                 rows_page = PLOT_XLC_NROW,
+                 cols_page = PLOT_XLC_NCOL,
+                 **kwargs):
+        
+     self._validate()
      self.data = data
      self.plot_key = plot_key
 
-   #  self._validate()
-
-     super().__init__(rows_page = PLOT_XLC_NROW, cols_page = PLOT_XLC_NCOL,
-                      fig_xlabel= PLOT_XLABEL['lc'], fig_ylabel='', **kwargs)	 
-     #self._extract_LCs(**kwargs)
+     super().__init__(rows_page = rows_page, cols_page = cols_page,
+                      fig_xlabel= PLOT_XLABEL['lc'], fig_ylabel=PLOT_YLABEL[plot_key], **kwargs)	 
      
-  
-    def lightcurves(self, **kwargs):
+    def _validate(self):
+        pass
+    
+    def lightcurves(self, stitched = False, **kwargs):
        
        lc_files = os.listdir(path_to_fits)       
        stars = self.data['STAR']
        tics = self.data['TIC']
        spcs = self.data['SpC']
-       ras = self.data['RA']
-       decs = self.data['DEC']
 
-       for star, spc, tic, ra, dec in zip(stars,spcs,tics,ras,decs):
+       for star, spc, tic in zip(stars,spcs,tics):
            
         filename = [f for f in lc_files if star in f]
         if len(filename) > 0:
-            hdulist = fits.open(os.path.join(path_to_fits,filename[0]))
-            sectors = get_sectors_from_hdulist(hdulist)
-            for sect in sectors:
-                hdu_raw = get_hdu_from_keys(hdulist, SECTOR = sect, BINNING = 'F')
-                hdu_bin = get_hdu_from_keys(hdulist, SECTOR = sect, BINNING = 'T')
-
-                ax = self.GridAx()
-                plot_lc_single(hdu_raw, ax=ax, m='.', flux_key = self.plot_key, lc_type = 'spoc')
-                plot_lc_single(hdu_bin, ax=ax, flux_key = self.plot_key, lc_type = 'spoc_binned')
-                
-                add_plot_features(ax=ax, mode = self.plot_key, upper_left=star,
-                                  lower_left=spc,lower_right='{} ({})'.format(tic,sect))   
-
-        else:
-            print('Star {} not found in database'.format(star))
             
-       self._page_close()
+            hdulist = fits.open(os.path.join(path_to_fits,filename[0]))
+            
+            sectors = get_sectors_from_hdulist(hdulist)
+            hdu_raw = [get_hdu_from_keys(hdulist, SECTOR = s, BINNING = 'F') for s in sectors]
+            hdu_bin = [get_hdu_from_keys(hdulist, SECTOR = s, BINNING = 'T') for s in sectors]
+            
+            if stitched:
+                
+                minmax = get_minmax_flux(hdu_bin, flux_key = self.plot_key)
+                grouped_hdu_raw = group_consecutive_hdus(hdu_raw,sectors)
+                grouped_hdu_bin = group_consecutive_hdus(hdu_bin,sectors)
+
+                axes = self.GridAx(divide=True, ndiv = len(grouped_hdu_raw))
+                plot_lc_multi(axes, grouped_hdu_raw, m='.',  flux_key = self.plot_key, lc_type = 'spoc')
+                plot_lc_multi(axes, grouped_hdu_bin, flux_key = self.plot_key, lc_type = 'spoc_binned')
+                
+                add_plot_features(axes, mode = self.plot_key, upper_left='{} (TIC{})'.format(star,tic), lower_left=spc, y_min_max = minmax)
+            else:
+                for r,b,sect in zip(hdu_raw,hdu_bin,sectors):
+                    ax = self.GridAx()
+                    
+                    plot_lc_single(ax, r, m='.', flux_key = self.plot_key, lc_type = 'spoc')
+                    plot_lc_single(ax, b, flux_key = self.plot_key, lc_type = 'spoc_binned')
+                    
+                    add_plot_features(ax, mode = self.plot_key, upper_left=star, lower_left=spc,lower_right='{} ({})'.format(tic,sect))
+        else:
+            print('{} not found in database'.format(star))
+            
+       if hasattr(self, 'fig'):
+           self.close_plot()
        
        return
-
-        
-       '''
-        
-        if len(files) > 0 : 
-            
-            s_sects,s_files = zip(*sorted(zip(sects,files)))
-            
-            filename = os.path.join(path_to_fits,'{}_{}.fits'.format(star,tic))
-            if kwargs.get('save_fits'):
-             ff = FitsObject(filename)
-
-            for f, sect in zip(s_files,s_sects):
-           
-             print('{}: extracting Sector {} of TIC {} (SPOC)'.format(star,sect,tic))
-  
-             fits = os.listdir(path_to_spoc_files + f)[0]
-             lc = lk.TessLightCurveFile(os.path.join(path_to_spoc_files + f,fits)).remove_nans().remove_outliers()
-             if kwargs.get('save_fits'): 
-                 ff.add_lc(lc, header_source = lc, flux_key = 'flux', binning = 'RAW')
-            
-             ax_lc = self.GridAx()
-             
-             plot_lc_single(lc, ax=ax_lc, lc_type = 'spoc', m = '.')
-             if time_bin_size is not None:
-               lc = lc.bin(time_bin_size = time_bin_size)
-               plot_lc_single(lc, ax=ax_lc, lc_type = 'spoc_binned')
-               '''
