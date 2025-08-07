@@ -5,6 +5,7 @@ from constants import *
 from methods.functions import *
 from methods.plot import *
 from methods.tools import FitsObject
+from astropy.io import fits
 
 class Extract(GridTemplate):
     
@@ -57,19 +58,23 @@ class Extract(GridTemplate):
              
              s_sects,s_files = zip(*sorted(zip(sects,files)))
              
-             filename = os.path.join(path_to_fits,'{}_{}.fits'.format(star,tic))
              if kwargs.get('save_fits'):
-              ff = FitsObject(filename)
+                 filename = os.path.join(path_to_output_fits,'{}_{}.fits'.format(star,tic))
+                 ff = FitsObject(filename)
 
              for f, sect in zip(s_files,s_sects):
             
               print('{}: extracting Sector {} of TIC {} (SPOC)'.format(star,sect,tic))
    
-              fits = os.listdir(path_to_spoc_files + f)[0]
-              lc = lk.TessLightCurveFile(os.path.join(path_to_spoc_files + f,fits)).remove_nans().remove_outliers()
-             
-              ax_lc = self.GridAx()
+              lc_file = os.listdir(path_to_spoc_files + f)[0]
+              path_to_input_file = os.path.join(path_to_spoc_files + f,lc_file)
+              lc = lk.TessLightCurveFile(path_to_input_file).remove_nans().remove_outliers()
               
+              # Opening fits using astropy because LightKurve method for 
+              # retrieving header is depraced              
+              lc_fits = fits.open(path_to_input_file)
+
+              ax_lc = self.GridAx()
               # Normalize raw by the polynomial fitting the binned light curve              
               bcoeff = None
               if time_bin_size is not None:
@@ -79,9 +84,9 @@ class Extract(GridTemplate):
               n_lc, _ = normalize(lc, coeff = bcoeff)
                  
               if kwargs.get('save_fits'): 
-                    ff.add_lc(n_lc, header_source = lc, binning = 'F')
+                    ff.add_lc(n_lc, header_source = lc_fits, binning = 'F')
                     if time_bin_size is not None:
-                        ff.add_lc(n_lcb, header_source = lc, binning = 'T', binsize = str(time_bin_size))
+                        ff.add_lc(n_lcb, header_source = lc_fits, binning = 'T', binsize = str(time_bin_size))
      
               # Plot the lightcurves
               plot_lc_single(ax_lc, n_lc, flux_key = self.plot_key, lc_type = 'spoc', m = '.')              
@@ -94,7 +99,8 @@ class Extract(GridTemplate):
               add_plot_features(ax_lc, mode = self.plot_key, upper_left=star,
                                 lower_left=spc,lower_right='{} ({})'.format(tic,sect))        
      
- 
+             lc_fits.close()
+             
              if kwargs.get('save_fits'):
                  
                if kwargs.get('extract_field'):

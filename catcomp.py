@@ -17,72 +17,73 @@ GDW =  [(not any(y in x for y in ('III','V','O9','A0','A1','A2','A3','ON','OC'))
 xc = xc[GDW]
 
 cm = PostProcess(xc).xmatch().append('combined'); cm.sort(['STAR'])
-EMS = [('LBV' in x) or ('B[e]SG' in x) for x in cm['SpC']]
-cm = cm[EMS]
-#cm = cm[(cm['GAL'] == 'MW')]; cm.sort(['STAR'])
-#
-#cm = cm[-30:]
-#cm.sort(['Tmag']); print(cm['STAR','RA','DEC','TIC','Tmag'].pprint(max_lines=-1,max_width=-1))
-#LCs = Extract(data=cm, plot_key='dmag', plot_name='ems_tess', join_pages = True, output_format='eps')
-#LCs.lightcurves(time_bin_size = 0.02, extract_field = True, save_fits = True)
-Visualize(data=cm, plot_name='EMS_STICHED-test', plot_key='dmag', rows_page=5, cols_page=1,join_pages=True, output_format='eps').lightcurves(stitched=True)
 
-'''
+#EMS = [('LBV' in x) or ('B[e]SG' in x) for x in cm['SpC']]
+#cm = cm[EMS]
 
-#print(cm['STAR','BPmag','RPmag','Jmag','Kmag','BR','JK'].pprint(max_lines=-1))
-#mast_query(cm, download_dir='data/', products = ["Lightcurve","ffi"])
+LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
+cm = cm[LOC]
 
+cm = cm[(cm['MK']<-2.5)]
 
-LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]
-cLBV = [('LBV?' in x) for x in cm['SpC']]
-BRC = [('B[e]SG' in x) & ('?' not in x) for x in cm['SpC']]
-cBRC = [('B[e]SG?' in x) for x in cm['SpC']]
+#cm = cm[:100]  #4/8 15:30
+#cm = cm[100:500]  #4/8 15:42
+#cm = cm[500:1000]  #5/8 11:00
+#cm = cm[1000:1500]  #5/8 14:00
+#cm = cm[1500:1935]  #5/8 19:00
+#cm = cm[1935:]  #6/8 08:00
+#print(cm['STAR','RA','DEC','TIC'].pprint(max_lines=-1))
+#mast_query(cm, download_dir='data/', products = ["Lightcurve"])
 
-plt.plot(cm['RA'],cm['DEC'],**plot_all)
-plt.plot(cm['RA'][LBV],cm['DEC'][LBV],**plot_LBV)
-plt.plot(cm['RA'][cLBV],cm['DEC'][cLBV],**plot_cLBV)
-plt.plot(cm['RA'][BRC],cm['DEC'][BRC],**plot_BRC)
-plt.plot(cm['RA'][cBRC],cm['DEC'][cBRC],**plot_cBRC)
+cm = cm[:500]
+LCs = Extract(data=cm, plot_key='dmag', plot_name='bsgs', join_pages = False, output_format='eps')
+LCs.lightcurves(time_bin_size = 0.020833, extract_field = False, save_fits = True)
+#Visualize(data=cm, plot_name='BSGs', plot_key='dmag', rows_page=5, cols_page=1,join_pages=True, output_format='eps').lightcurves(stitched=True)
 
-for g, p in GALAXIES.items(): 
- c = plt.Circle((p['RA'], p['DEC']), p['RAD'], color='r', fill=False)
- plt.gca().add_patch(c)
- plt.text(p['RA'], p['DEC'], g, c='r', fontsize=8)
-
-
+#LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]
+#cLBV = [('LBV?' in x) for x in cm['SpC']]
+#BRC = [('B[e]SG' in x) & ('?' not in x) for x in cm['SpC']]
+#cBRC = [('B[e]SG?' in x) for x in cm['SpC']]
+#plt.plot(cm['RA'],cm['DEC'],**plot_all)
+#plt.plot(cm['RA'][LBV],cm['DEC'][LBV],**plot_LBV)
+#plt.plot(cm['RA'][cLBV],cm['DEC'][cLBV],**plot_cLBV)
+#plt.plot(cm['RA'][BRC],cm['DEC'][BRC],**plot_BRC)
+#plt.plot(cm['RA'][cBRC],cm['DEC'][cBRC],**plot_cBRC)
+#for g, p in GALAXIES.items(): 
+# c = plt.Circle((p['RA'], p['DEC']), p['RAD'], color='r', fill=False)
+# plt.gca().add_patch(c)
+# plt.text(p['RA'], p['DEC'], g, c='r', fontsize=8)
 
 #print(cm['STAR','SpC','RA','DEC','Gmag','GDIST','MG','SLOGL','REF'].pprint(max_lines=-1))
 #plt.plot(cm['TEFF'],cm['SLOGL'],'rx'); plt.xlabel(r'T$_{eff}$'); plt.ylabel(r'log(T$_{eff}^4$/g [$L_{\odot}$])'); plt.xlabel(r'T$_{eff}$ [K]'); plt.gca().invert_xaxis() ; plt.show()
 
-cm = cm[(cm['MK']<-2.5)]; cm.sort(['RA'])
-print(cm['STAR','SpC','RA','DEC','REF','DIST','GDIST','MK','TIC'].pprint(max_lines=-1))
+#print(cm['STAR','SpC','RA','DEC','REF','DIST','GDIST','MK','TIC'].pprint(max_lines=-1))
 
-LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]
-cLBV = [('LBV?' in x) for x in cm['SpC']]
-BRC = [('B[e]SG' in x) & ('?' not in x) for x in cm['SpC']]
-cBRC = [('B[e]SG?' in x) for x in cm['SpC']]
-DR24 = ['D24' in x for x in cm['REF']]
+#LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]
+#cLBV = [('LBV?' in x) for x in cm['SpC']]
+#BRC = [('B[e]SG' in x) & ('?' not in x) for x in cm['SpC']]
+#cBRC = [('B[e]SG?' in x) for x in cm['SpC']]
+#DR24 = ['D24' in x for x in cm['REF']]
 
-plt.plot(cm['BR'],cm['MG'],**plot_all); plt.xlabel(r'G$_{B}$-G$_{R}$'); plt.ylabel(r'M$_{G}$')  
-plt.plot(cm['BR'][DR24],cm['MG'][DR24],'rx'); 
-plt.plot(cm['BR'][LBV],cm['MG'][LBV],**plot_LBV) 
-plt.plot(cm['BR'][cLBV],cm['MG'][cLBV],**plot_cLBV) 
-plt.plot(cm['BR'][BRC],cm['MG'][BRC],**plot_BRC) 
-plt.plot(cm['BR'][cBRC],cm['MG'][cBRC],**plot_cBRC)
-plt.gca().invert_yaxis() 
-plt.show()
+#plt.plot(cm['BR'],cm['MG'],**plot_all); plt.xlabel(r'G$_{B}$-G$_{R}$'); plt.ylabel(r'M$_{G}$')  
+#plt.plot(cm['BR'][DR24],cm['MG'][DR24],'rx'); 
+#plt.plot(cm['BR'][LBV],cm['MG'][LBV],**plot_LBV) 
+#plt.plot(cm['BR'][cLBV],cm['MG'][cLBV],**plot_cLBV) 
+#plt.plot(cm['BR'][BRC],cm['MG'][BRC],**plot_BRC) 
+#plt.plot(cm['BR'][cBRC],cm['MG'][cBRC],**plot_cBRC)
+#plt.gca().invert_yaxis() 
+#plt.show()
+
+#plt.plot(cm['JK'],cm['MK'],**plot_all); plt.xlabel(r'J-K'); plt.ylabel(r'M$_{K}$')  
+#plt.plot(cm['JK'][DR24],cm['MK'][DR24],'rx')
+#plt.plot(cm['JK'][LBV],cm['MK'][LBV],**plot_LBV)
+#plt.plot(cm['JK'][cLBV],cm['MK'][cLBV],**plot_cLBV) 
+#plt.plot(cm['JK'][BRC],cm['MK'][BRC],**plot_BRC)
+#plt.plot(cm['JK'][cBRC],cm['MK'][cBRC],**plot_cBRC)
+#plt.gca().invert_yaxis() 
+#plt.show()
 
 '''
-'''
-plt.plot(cm['JK'],cm['MK'],**plot_all); plt.xlabel(r'J-K'); plt.ylabel(r'M$_{K}$')  
-plt.plot(cm['JK'][DR24],cm['MK'][DR24],'rx')
-plt.plot(cm['JK'][LBV],cm['MK'][LBV],**plot_LBV)
-plt.plot(cm['JK'][cLBV],cm['MK'][cLBV],**plot_cLBV) 
-plt.plot(cm['JK'][BRC],cm['MK'][BRC],**plot_BRC)
-plt.plot(cm['JK'][cBRC],cm['MK'][cBRC],**plot_cBRC)
-plt.gca().invert_yaxis() 
-
-plt.show()
 #gal = SkyCoord(ra=np.array(cm['RA'])*u.degree, dec=np.array(cm['DEC'])*u.degree, frame='icrs').galactic
 #plt.plot(cm['RUWE'],gal.b,'o')
 #plt.plot(cm['RUWE'],cm['GLAT'],'rx'); plt.xlabel(r'RUWE'); plt.ylabel(r'GLAT'); plt.axvline(1.4)   

@@ -64,7 +64,9 @@ class Visualize(GridTemplate):
                 plot_lc_multi(axes, grouped_hdu_bin, flux_key = self.plot_key, lc_type = 'spoc_binned')
                 
                 add_plot_features(axes, mode = self.plot_key, upper_left='{} (TIC{})'.format(star,tic), lower_left=spc, y_min_max = minmax)
+ 
             else:
+                
                 for r,b,sect in zip(hdu_raw,hdu_bin,sectors):
                     ax = self.GridAx()
                     
@@ -75,7 +77,6 @@ class Visualize(GridTemplate):
         else:
             print('{} not found in database'.format(star))
             
-       if hasattr(self, 'fig'):
-           self.close_plot()
+       self.close_plot()
        
        return

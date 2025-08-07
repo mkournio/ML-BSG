@@ -159,10 +159,10 @@ class FitsObject(object):
        
        return          
    
-      def _create_header_from_original(self, hdr,tess_lc_file):
-          
-       header_p = tess_lc_file.hdu[0].header
-       header_b = tess_lc_file.hdu[1].header
+      def _create_header_from_original(self, hdr,lc_fits):
+       
+       header_p = lc_fits[0].header
+       header_b = lc_fits[1].header
            
        for key in tess_header_keys_p :
         try:

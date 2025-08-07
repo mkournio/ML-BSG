@@ -72,12 +72,13 @@ def plot_lc_multi(axes,
             else:
                 offset = 0.
             g_times = np.append(g_times,hdu.data['time'])
+            hdu.data[flux_key][-1] = np.nan
             g_fluxes = np.append(g_fluxes,hdu.data[flux_key]-offset)
             g_sects.append(hdu.header['SECTOR'])
  
-        g_sect_tx = '+'.join([str(x) for x in g_sects])
+        g_sect_tx = r'{}$-${}'.format(g_sects[0],g_sects[-1])
         ax.plot(g_times, g_fluxes,m,c = LC_COLOR[lc_type])
-        ax.text(0.4,0.05,g_sect_tx,color='b',fontsize=SIZE_FONT_SUB,transform=ax.transAxes)
+        ax.text(0.48,0.05,g_sect_tx,color='b',fontsize=SIZE_FONT_SUB,transform=ax.transAxes)
         
         x1_p = (2*g_times[0]+g_times[-1])/3.
         x2_p = (2*g_times[-1]+g_times[0])/3.
@@ -209,7 +210,7 @@ class GridTemplate(object):
         
 		#Initiating pdf book
         if self.join_pages:
-          #  self.output_format = 'pdf'
+            self.output_format = 'pdf'
             self.pdf_list = []
 
         self.ind = 0
@@ -330,7 +331,9 @@ class GridTemplate(object):
     
     def close_plot(self):
         
-        self._page_close()
+        if hasattr(self,'fig'):
+            self._page_close()
+            
         if self.join_pages:
             merger = PdfWriter()
             for f in self.pdf_list:
