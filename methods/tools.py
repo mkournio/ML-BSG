@@ -57,6 +57,15 @@ def group_consecutive_hdus(hdulist,sectors):
     else:
         return [hdulist]
     
+def get_ax_scaling(hdulist):
+    
+    h0 = len(hdulist[0])
+    ax_scaling = []
+    for h in hdulist[1:]:
+        ax_scaling.append(100 * len(h) / h0)
+        
+    return ax_scaling        
+    
 def get_minmax_flux(hdulist, flux_key):
     
     mins=[]; maxs=[]       

@@ -79,6 +79,17 @@ def radmass(logg,rad):
 
 ############# TESS LIGHTCURVES
 
+def remove_slow_lcs(files):
+    
+    for f in files:
+        if "a_fast" in f:
+            try:
+                files.remove(f.replace("a_fast","s"))
+            except:
+                pass
+            
+    return files
+
 def normalize(lc, deg = 2, flux_key ="pdcsap_flux", coeff = None):
     
     import lightkurve as lk

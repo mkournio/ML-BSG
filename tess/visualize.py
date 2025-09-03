@@ -37,17 +37,16 @@ class Visualize(GridTemplate):
     
     def lightcurves(self, stitched = False, **kwargs):
        
-       lc_files = os.listdir(path_to_fits)       
        stars = self.data['STAR']
        tics = self.data['TIC']
        spcs = self.data['SpC']
 
        for star, spc, tic in zip(stars,spcs,tics):
            
-        filename = [f for f in lc_files if star in f]
+        filename = [f for f in os.listdir(path_to_output_fits) if star in f]
         if len(filename) > 0:
             
-            hdulist = fits.open(os.path.join(path_to_fits,filename[0]))
+            hdulist = fits.open(os.path.join(path_to_output_fits,filename[0]))
             
             sectors = get_sectors_from_hdulist(hdulist)
             hdu_raw = [get_hdu_from_keys(hdulist, SECTOR = s, BINNING = 'F') for s in sectors]
@@ -58,8 +57,10 @@ class Visualize(GridTemplate):
                 minmax = get_minmax_flux(hdu_bin, flux_key = self.plot_key)
                 grouped_hdu_raw = group_consecutive_hdus(hdu_raw,sectors)
                 grouped_hdu_bin = group_consecutive_hdus(hdu_bin,sectors)
+                
+                ax_scaling = get_ax_scaling(grouped_hdu_raw)
 
-                axes = self.GridAx(divide=True, ndiv = len(grouped_hdu_raw))
+                axes = self.GridAx(divide=True, ax_scaling = ax_scaling)
                 plot_lc_multi(axes, grouped_hdu_raw, m='.',  flux_key = self.plot_key, lc_type = 'spoc')
                 plot_lc_multi(axes, grouped_hdu_bin, flux_key = self.plot_key, lc_type = 'spoc_binned')
                 

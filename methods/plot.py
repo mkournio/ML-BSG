@@ -76,7 +76,10 @@ def plot_lc_multi(axes,
             g_fluxes = np.append(g_fluxes,hdu.data[flux_key]-offset)
             g_sects.append(hdu.header['SECTOR'])
  
-        g_sect_tx = r'{}$-${}'.format(g_sects[0],g_sects[-1])
+        if len(g_sects) > 1: 
+            g_sect_tx = r'{}$-${}'.format(g_sects[0],g_sects[-1])
+        else:
+            g_sect_tx = r'{}'.format(g_sects[0])
         ax.plot(g_times, g_fluxes,m,c = LC_COLOR[lc_type])
         ax.text(0.48,0.05,g_sect_tx,color='b',fontsize=SIZE_FONT_SUB,transform=ax.transAxes)
         
@@ -217,7 +220,7 @@ class GridTemplate(object):
         
     def GridAx(self,
                divide=False,
-               ndiv=2):
+               ax_scaling=[]):
         
         # Returns the position axis on the grid when called from the child class
 
@@ -258,28 +261,28 @@ class GridTemplate(object):
         if 'ylim' in self.__dict__: ax.set_ylim(self.ylim)
         
         if divide:
-            ax = self._axis_divide(ax,ndiv)
+            ax = self._axis_divide(ax,ax_scaling)
         
         self.ind += 1
         
         return ax
     
-    def _axis_divide(self,ax,n,**kwargs):
+    def _axis_divide(self,ax,ax_scaling,**kwargs):
         
-        if n == 1:            
+        ax_v = [ax]        
+        if len(ax_scaling) == 0:            
             return [ax]
         
-        ax_v = [ax]
         d  = kwargs.pop('d', 0.02)
-        divider = make_axes_locatable(ax)       
-        for k in np.arange(0,n-1,1):            
+        divider = make_axes_locatable(ax)
+        for xs in ax_scaling:                      
 
             axargs = dict(transform=ax.transAxes, color='k', clip_on=False)
             ax.plot((1,1),(-d,+d), **axargs)
             ax.plot((1,1),(1-d,1+d), **axargs)
             ax.spines["right"].set_visible(False)
             
-            ax = divider.append_axes("right", size="100%", pad=0.14)
+            ax = divider.append_axes("right", size="%s%%" % xs, pad=0.14)
             
             axargs.update(transform=ax.transAxes) 
             ax.plot((0,0),(-d,+d), **axargs)

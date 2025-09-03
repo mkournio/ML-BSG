@@ -16,29 +16,33 @@ xc = PreProcess(args).compile()
 GDW =  [(not any(y in x for y in ('III','V','O9','A0','A1','A2','A3','ON','OC'))) or ('LBV' in x) for x in xc['SpC']]
 xc = xc[GDW]
 
-cm = PostProcess(xc).xmatch().append('combined'); cm.sort(['STAR'])
+cm = PostProcess(xc).xmatch().append('combined'); cm.sort(['RA'])
 
 #EMS = [('LBV' in x) or ('B[e]SG' in x) for x in cm['SpC']]
 #cm = cm[EMS]
 
 LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
 cm = cm[LOC]
-
 cm = cm[(cm['MK']<-2.5)]
+#print(cm.columns,len(cm))
 
+# QUERYING FROM MAST - SPOC LIGHTCURVES
 #cm = cm[:100]  #4/8 15:30
 #cm = cm[100:500]  #4/8 15:42
 #cm = cm[500:1000]  #5/8 11:00
 #cm = cm[1000:1500]  #5/8 14:00
 #cm = cm[1500:1935]  #5/8 19:00
 #cm = cm[1935:]  #6/8 08:00
-#print(cm['STAR','RA','DEC','TIC'].pprint(max_lines=-1))
+#print(cm['STAR','RA','SpC','DIST','REF'].pprint(max_lines=-1,max_width=-1))
 #mast_query(cm, download_dir='data/', products = ["Lightcurve"])
 
-cm = cm[:500]
-LCs = Extract(data=cm, plot_key='dmag', plot_name='bsgs', join_pages = False, output_format='eps')
-LCs.lightcurves(time_bin_size = 0.020833, extract_field = False, save_fits = True)
-#Visualize(data=cm, plot_name='BSGs', plot_key='dmag', rows_page=5, cols_page=1,join_pages=True, output_format='eps').lightcurves(stitched=True)
+cm = cm[:10]
+# LIGHTVURVE EXTRACTION - FITS CREATION
+#LCs = Extract(data=cm, plot_key='dmag', plot_name='x_bsgs', join_pages = False, output_format='png')
+#LCs.lightcurves(time_bin_size = 0.020833, extract_field = False, save_fits = True)
+
+# SPOC LCs VISUALIZATION
+Visualize(data=cm, plot_name='v_bsgs', plot_key='dmag', rows_page=5, cols_page=1,join_pages=False, output_format='png').lightcurves(stitched=True)
 
 #LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]
 #cLBV = [('LBV?' in x) for x in cm['SpC']]

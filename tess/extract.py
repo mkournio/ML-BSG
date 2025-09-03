@@ -52,6 +52,7 @@ class Extract(GridTemplate):
         for star, spc, tic, ra, dec in zip(stars,spcs,tics,ras,decs):
             
          files = [f for f in self.fSPOC if str(tic) in f]
+         files = remove_slow_lcs(files)
          sects = [int(f.split('-')[1][1:]) for f in files]
          
          if len(files) > 0 : 
@@ -65,7 +66,7 @@ class Extract(GridTemplate):
              for f, sect in zip(s_files,s_sects):
             
               print('{}: extracting Sector {} of TIC {} (SPOC)'.format(star,sect,tic))
-   
+
               lc_file = os.listdir(path_to_spoc_files + f)[0]
               path_to_input_file = os.path.join(path_to_spoc_files + f,lc_file)
               lc = lk.TessLightCurveFile(path_to_input_file).remove_nans().remove_outliers()
