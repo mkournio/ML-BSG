@@ -10,6 +10,7 @@ from astropy.coordinates import SkyCoord
 from constants import *
 import pandas as pd
 from tess import *
+import numpy as np
 
 
 xc = PreProcess(args).compile()
@@ -18,31 +19,45 @@ xc = xc[GDW]
 
 cm = PostProcess(xc).xmatch().append('combined'); cm.sort(['RA'])
 
+# FILTERING THE SAMPLE
 #EMS = [('LBV' in x) or ('B[e]SG' in x) for x in cm['SpC']]
 #cm = cm[EMS]
-
 LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
 cm = cm[LOC]
 cm = cm[(cm['MK']<-2.5)]
-#print(cm.columns,len(cm))
 
-# QUERYING FROM MAST - SPOC LIGHTCURVES
-#cm = cm[:100]  #4/8 15:30
-#cm = cm[100:500]  #4/8 15:42
-#cm = cm[500:1000]  #5/8 11:00
-#cm = cm[1000:1500]  #5/8 14:00
-#cm = cm[1500:1935]  #5/8 19:00
-#cm = cm[1935:]  #6/8 08:00
-#print(cm['STAR','RA','SpC','DIST','REF'].pprint(max_lines=-1,max_width=-1))
+cm = cm[:5]
+
+#### QUERYING FROM MAST - SPOC LIGHTCURVES
 #mast_query(cm, download_dir='data/', products = ["Lightcurve"])
+# 7/9: 14:00 stopped at 2MASSJ04533373-6654075 with TIC 30110106
+#r=np.where(cm['STAR']=='HD191396')[0][0]
+#cm = cm[r:]
 
-cm = cm[:10]
+#### FILTER FOR CASLEO 2026A PROPOSAL
+#LOC = [('MW' in x) for x in cm['GAL']]
+#cm = cm[LOC]
+#CASLEO = (100<cm['RA']) & \
+#         (cm['RA']<300) & \
+#         (cm['DEC']<0) & \
+#         (cm['BPmag']<11) & (cm['Gmag']<11)
+#cm = cm[CASLEO]
+#ra_c,dec_c = np.genfromtxt('casleo_pv',unpack=True,usecols=(0,1),comments='#')
+#mask = [float('%.4f'% x) in ra_c for x in cm['RA']] 
+#cm = cm[mask]
+#####################################
+
+#print(cm.columns)
+#print(cm['STAR','RA','DEC','SpC','Gmag','Kmag','GDIST','GAL','REF'].pprint(max_lines=-1,max_width=-1))
+
 # LIGHTVURVE EXTRACTION - FITS CREATION
 #LCs = Extract(data=cm, plot_key='dmag', plot_name='x_bsgs', join_pages = False, output_format='png')
 #LCs.lightcurves(time_bin_size = 0.020833, extract_field = False, save_fits = True)
+    
+Measures(data=cm).calculate('std','mad','skw','eta','psi')
 
 # SPOC LCs VISUALIZATION
-Visualize(data=cm, plot_name='v_bsgs', plot_key='dmag', rows_page=5, cols_page=1,join_pages=False, output_format='png').lightcurves(stitched=True)
+#Visualize(data=cm, plot_name='BSGs', plot_key='dmag', rows_page=7, cols_page=1,join_pages=False, output_format='png').lightcurves(stitched=True)
 
 #LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]
 #cLBV = [('LBV?' in x) for x in cm['SpC']]

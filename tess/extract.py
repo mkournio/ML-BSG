@@ -4,7 +4,7 @@ import os
 from constants import *
 from methods.functions import *
 from methods.plot import *
-from methods.tools import FitsObject
+from methods.tools import FitsObject, get_fits_name
 from astropy.io import fits
 
 class Extract(GridTemplate):
@@ -60,8 +60,7 @@ class Extract(GridTemplate):
              s_sects,s_files = zip(*sorted(zip(sects,files)))
              
              if kwargs.get('save_fits'):
-                 filename = os.path.join(path_to_output_fits,'{}_{}.fits'.format(star,tic))
-                 ff = FitsObject(filename)
+                 ff = FitsObject(get_fits_name(star,tic))
 
              for f, sect in zip(s_files,s_sects):
             

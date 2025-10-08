@@ -4,6 +4,7 @@ import datetime
 import numpy as np
 import lightkurve as lk
 import warnings
+import os
 
 def check_header_key(hdu,key,val):
     if key in hdu.header:
@@ -76,6 +77,11 @@ def get_minmax_flux(hdulist, flux_key):
         maxs.append(med+3*std)
 
     return min(mins), max(maxs) 
+
+def get_fits_name(star,tic):
+    
+    return os.path.join(path_to_output_fits,'{}_{}.fits'.format(star,tic))
+
 
 class FitsObject(object):
 

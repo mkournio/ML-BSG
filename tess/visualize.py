@@ -32,19 +32,28 @@ class Visualize(GridTemplate):
      super().__init__(rows_page = rows_page, cols_page = cols_page,
                       fig_xlabel= PLOT_XLABEL['lc'], fig_ylabel=PLOT_YLABEL[plot_key], **kwargs)	 
      
+     return
+     
     def _validate(self):
         pass
     
     def lightcurves(self, stitched = False, **kwargs):
        
        stars = self.data['STAR']
+       ras = self.data['RA']
+       decs = self.data['DEC']
+
+       
        tics = self.data['TIC']
        spcs = self.data['SpC']
 
-       for star, spc, tic in zip(stars,spcs,tics):
+       for star, spc, ra, dec, tic in zip(stars,spcs,ras,decs,tics):
            
         filename = [f for f in os.listdir(path_to_output_fits) if star in f]
         if len(filename) > 0:
+            
+            print('plotting {} {:.4f},{:.4f}'.format(star,ra,dec))
+
             
             hdulist = fits.open(os.path.join(path_to_output_fits,filename[0]))
             
@@ -59,12 +68,16 @@ class Visualize(GridTemplate):
                 grouped_hdu_bin = group_consecutive_hdus(hdu_bin,sectors)
                 
                 ax_scaling = get_ax_scaling(grouped_hdu_raw)
+                crowdsap = grouped_hdu_raw[-1][-1].header['CROWDSAP']
 
                 axes = self.GridAx(divide=True, ax_scaling = ax_scaling)
                 plot_lc_multi(axes, grouped_hdu_raw, m='.',  flux_key = self.plot_key, lc_type = 'spoc')
                 plot_lc_multi(axes, grouped_hdu_bin, flux_key = self.plot_key, lc_type = 'spoc_binned')
                 
-                add_plot_features(axes, mode = self.plot_key, upper_left='{} (TIC{})'.format(star,tic), lower_left=spc, y_min_max = minmax)
+                add_plot_features(axes, mode = self.plot_key, 
+                                  upper_left='{} (TIC {})'.format(star,tic), 
+                                #  upper_right='CROWD {:.2f}'.format(crowdsap),
+                                  lower_left=spc, y_min_max = minmax)
  
             else:
                 
@@ -74,9 +87,13 @@ class Visualize(GridTemplate):
                     plot_lc_single(ax, r, m='.', flux_key = self.plot_key, lc_type = 'spoc')
                     plot_lc_single(ax, b, flux_key = self.plot_key, lc_type = 'spoc_binned')
                     
-                    add_plot_features(ax, mode = self.plot_key, upper_left=star, lower_left=spc,lower_right='{} ({})'.format(tic,sect))
+                    add_plot_features(ax, mode = self.plot_key, 
+                                      upper_left=star, lower_left=spc,
+                                      lower_right='{} ({})'.format(tic,sect))
+
         else:
-            print('{} not found in database'.format(star))
+            pass
+           # print('{} not found in database'.format(star))
             
        self.close_plot()
        

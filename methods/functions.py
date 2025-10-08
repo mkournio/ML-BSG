@@ -1,5 +1,8 @@
 from constants import *
 import numpy as np
+import lightkurve as lk
+from scipy import stats
+
 
 def coord_to_gal(ra,dec):
       
@@ -90,10 +93,8 @@ def remove_slow_lcs(files):
             
     return files
 
-def normalize(lc, deg = 2, flux_key ="pdcsap_flux", coeff = None):
-    
-    import lightkurve as lk
-    
+def normalize(lc, deg = 2, flux_key ="pdcsap_flux", coeff = None):    
+   
     if isinstance(lc, lk.LightCurve):
         time = lc.time.value
         flux = lc[flux_key].value
@@ -131,6 +132,60 @@ def normalize(lc, deg = 2, flux_key ="pdcsap_flux", coeff = None):
                        names=['nflux','nflux_err','dmag','dmag_err','fitmodel'])
 
     return new_lc, coeff
+
+# TODO - make the following as static methods 
+
+def get_std(flux):
+    
+    return np.std(flux)
+
+def get_mad(flux):
+    
+    return np.median(np.absolute(flux - np.median(flux)))
+
+def get_skew(flux):
+    
+    return stats.skew(flux)
+
+def get_eta(flux):
+
+	succd = np.sum(np.diff(flux)**2) / (len(flux) - 1) 
+
+	return succd / np.var(flux)
+
+def k_cross(flux, kappa = 5):
+    
+    i = 0
+    d_k = []
+    nflux = np.copy(flux)
+    while i < kappa:
+        
+        nflux = nflux - np.mean(nflux)
+        
+        clipped = np.copy(nflux)
+        clipped[clipped >= 0] = 1
+        clipped[clipped < 0] = 0
+        
+        d_k.append( np.sum(np.diff(clipped)**2)/len(clipped) )
+        
+        nflux = np.diff(nflux)
+        
+        i += 1
+        
+    return np.array(d_k)
+
+def get_psi_sq(flux, kappa = 5):
+    
+    d_star = k_cross(flux, kappa)
+    
+    delta_star = np.append(d_star[0], np.diff(d_star))
+    
+    wn = np.random.normal(0, 1, size=len(flux))
+    d_gauss = k_cross(wn,kappa)
+    
+    delta_gauss = np.append(d_gauss[0], np.diff(d_gauss))
+    
+    return np.sum( ( (delta_star - delta_gauss)**2 ) / delta_gauss)	
 
 def save_two_col(x,y,filename):
 

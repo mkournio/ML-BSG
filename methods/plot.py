@@ -81,7 +81,7 @@ def plot_lc_multi(axes,
         else:
             g_sect_tx = r'{}'.format(g_sects[0])
         ax.plot(g_times, g_fluxes,m,c = LC_COLOR[lc_type])
-        ax.text(0.48,0.05,g_sect_tx,color='b',fontsize=SIZE_FONT_SUB,transform=ax.transAxes)
+        ax.text(0.48,0.05,g_sect_tx,color='k',fontsize=SIZE_FONT_SUB,transform=ax.transAxes)
         
         x1_p = (2*g_times[0]+g_times[-1])/3.
         x2_p = (2*g_times[-1]+g_times[0])/3.
@@ -169,8 +169,8 @@ def add_plot_features(ax,mode = 'flux',upper_left='',lower_left='',lower_right='
             
     ax[0].text(0.05,0.85,upper_left,color='r',fontsize=SIZE_FONT_SUB,transform=ax[0].transAxes)
     ax[0].text(0.05,0.05,lower_left,color='b',fontsize=SIZE_FONT_SUB,transform=ax[0].transAxes)
-    ax[0].text(0.6,0.05,lower_right,color='b',fontsize=SIZE_FONT_SUB,transform=ax[0].transAxes)
-    ax[0].text(0.6,0.85,upper_right,color='b',fontsize=SIZE_FONT_SUB,transform=ax[0].transAxes)  
+    ax[-1].text(0.6,0.05,lower_right,color='b',fontsize=SIZE_FONT_SUB,transform=ax[-1].transAxes)
+    ax[-1].text(0.6,0.85,upper_right,color='k',fontsize=SIZE_FONT_SUB,transform=ax[-1].transAxes)  
     
     return ax
 
