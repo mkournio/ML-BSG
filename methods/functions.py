@@ -2,7 +2,9 @@ from constants import *
 import numpy as np
 import lightkurve as lk
 from scipy import stats
-
+import re
+import EntropyHub as EH
+import matplotlib.pyplot as plt
 
 def coord_to_gal(ra,dec):
       
@@ -25,8 +27,7 @@ def simb_q(ids):
        s_obj = Simbad.query_objects(list(ids))
         
        return to_deg(s_obj['RA'],s_obj['DEC'])   
-         
-       
+    
 def sedscal(rad,dist):
 
 	rad_arr = np.array(rad.filled(np.nan))		
@@ -153,6 +154,43 @@ def get_eta(flux):
 
 	return succd / np.var(flux)
 
+def get_iqr(flux):
+    
+    q75, q25 = np.percentile(flux, [75 ,25])
+    
+    return q75 - q25
+
+def get_kurt(flux):
+    
+    return stats.kurtosis(flux)
+
+def get_mse(flux, m = 2, tau = 15, tol = 0.2):
+    
+    if len(flux) > 40000:
+        
+        return  np.full(4, np.nan)
+        
+    Mobj = EH.MSobject('SampEn', m = m, r = tol * np.nanstd(flux), Logx = np.exp(1), Vcp = False)
+    mse = EH.MSEn(flux, Mobj, Scales = tau, Methodx = 'coarse', RadNew = 0, Plotx = False)
+    
+    msx = np.arange(1,tau+1,1)
+    msy = mse[0]
+    
+    idx = np.isfinite(msx) & np.isfinite(msy)
+    msx = msx[idx]
+    msy = msy[idx]
+    
+    std = get_std(msy)
+    z2 = np.polyfit(msx,msy,deg=2)
+    z1 = np.polyfit(msx,msy,deg=1)
+    
+    #f2 = np.poly1d(z2)
+    #f1 = np.poly1d(z1)
+    #plt.plot(msx,f2(msx))
+    #plt.plot(msx,f1(msx))
+    
+    return  np.mean(msy**2), std, 2*z2[0], z1[0]
+
 def k_cross(flux, kappa = 5):
     
     i = 0
@@ -176,11 +214,12 @@ def k_cross(flux, kappa = 5):
 
 def get_psi_sq(flux, kappa = 5):
     
+    std = np.std(flux)
     d_star = k_cross(flux, kappa)
     
     delta_star = np.append(d_star[0], np.diff(d_star))
     
-    wn = np.random.normal(0, 1, size=len(flux))
+    wn = np.random.normal(0, std, size=len(flux))
     d_gauss = k_cross(wn,kappa)
     
     delta_gauss = np.append(d_gauss[0], np.diff(d_gauss))

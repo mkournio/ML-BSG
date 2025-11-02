@@ -25,14 +25,14 @@ cm = PostProcess(xc).xmatch().append('combined'); cm.sort(['RA'])
 LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
 cm = cm[LOC]
 cm = cm[(cm['MK']<-2.5)]
-
-cm = cm[:5]
+#cm = cm[1:3]
 
 #### QUERYING FROM MAST - SPOC LIGHTCURVES
-#mast_query(cm, download_dir='data/', products = ["Lightcurve"])
-# 7/9: 14:00 stopped at 2MASSJ04533373-6654075 with TIC 30110106
+# 17/10/25 - last update
 #r=np.where(cm['STAR']=='HD191396')[0][0]
 #cm = cm[r:]
+#mast_query(cm, download_dir='data/', products = ["Lightcurve"])
+
 
 #### FILTER FOR CASLEO 2026A PROPOSAL
 #LOC = [('MW' in x) for x in cm['GAL']]
@@ -47,17 +47,69 @@ cm = cm[:5]
 #cm = cm[mask]
 #####################################
 
+ 
 #print(cm.columns)
-#print(cm['STAR','RA','DEC','SpC','Gmag','Kmag','GDIST','GAL','REF'].pprint(max_lines=-1,max_width=-1))
+#print(cm['STAR','TEFF','SLOGL'].pprint(max_lines=-1,max_width=-1))
 
+#18/10 stop: MASSJ05045052-7038229: extracted Sector s0027 of TIC 31006657 (SPOC)
+#r=np.where(cm['STAR']=='HD96060')[0][0]
+#print(r)
+#cm = cm[r:]
 # LIGHTVURVE EXTRACTION - FITS CREATION
-#LCs = Extract(data=cm, plot_key='dmag', plot_name='x_bsgs', join_pages = False, output_format='png')
-#LCs.lightcurves(time_bin_size = 0.020833, extract_field = False, save_fits = True)
-    
-Measures(data=cm).calculate('std','mad','skw','eta','psi')
+#LCs = Extract(data=cm, plot_key='dmag', plot_name='x_bsgs', output_format='png')#, inter=True)
+#LCs.header_key(key='NAXIS2')
+#LCs.lightcurves(time_bin = [0.00694,0.02083], save_fits = True, extract_field = False)
+
+time_metrics= ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
+m = TimeDomain(data = cm, measures = time_metrics)
+
+#m.reset_headers(primary=True, sectors=False)
+#m.calculate()
+m.header_combine(mode = 'average', bin_size = '30m')
+
+f = Features(data = cm)
+f.cols_from_headers(time_metrics + ['MINCROWD','AVECROWD'], update_table = True)
+#print(cm[['STAR'] + ['MK', 'TEFF','SLOGL','IQR','PSI','SKW']].pprint(max_lines=-1,max_width=-1))
+
+#f.scatter_plot(x=['MSP', 'MSS'], y = ['MSD','MSC'], #,'MSC','MSD','MSP'], 
+#            invert=['MK'],
+#            cbar = ['AVECROWD', 0.79, 1],  #['Tmag', 4, 14]
+#         #   alpha = ['AVECROWD', 0.75, 0.85, 0.95],
+#            output_format = None, inter=True)
+
+f.scatter_plot(x=['MK', 'TEFF','SLOGL'], y = ['logIQR','PSI','SKW'],#,'MSC','MSD','MSP'], 
+            invert=['MK'],
+            cbar = ['AVECROWD', 0.79, 1],  #['Tmag', 4, 14]
+         #   alpha = ['AVECROWD', 0.75, 0.85, 0.95],
+            output_format = None, inter=True)
+
+f.scatter_plot(x=['MSC','MSP'], y=['PSI','e_PSI','MSS','MSD'],  
+            invert=[], 
+            cbar = ['AVECROWD', 0.8, 1.0],  #['Tmag', 4, 14]
+          #  alpha = ['AVECROWD', 0.75, 0.85, 0.95], 
+            output_format = None, inter=True)
+
+'''
+f.scatter_plot(x=['MK', 'TEFF','SLOGL'], y = ['logIQR','PSI','SKW'],#,'MSC','MSD','MSP'], 
+            invert=['MK'],
+            cbar = ['AVECROWD', 0.79, 1],  #['Tmag', 4, 14]
+         #   alpha = ['AVECROWD', 0.75, 0.85, 0.95],
+            output_format = None, inter=True)
+
+f.scatter_plot(x=['MSC','MSD'], y=['PSI','MSP','e_PSI','MK','e_MSP'],  
+            invert=[], 
+            cbar = ['AVECROWD', 0.8, 1.0],  #['Tmag', 4, 14]
+          #  alpha = ['AVECROWD', 0.75, 0.85, 0.95], 
+            output_format = None, inter=True)
+
+'''
+#print(cm[('STAR','TEFF',) + metrics].pprint(max_lines=-1,max_width=-1))
+#print(cm.columns)
+
 
 # SPOC LCs VISUALIZATION
 #Visualize(data=cm, plot_name='BSGs', plot_key='dmag', rows_page=7, cols_page=1,join_pages=False, output_format='png').lightcurves(stitched=True)
+
 
 #LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]
 #cLBV = [('LBV?' in x) for x in cm['SpC']]
@@ -102,7 +154,6 @@ Measures(data=cm).calculate('std','mad','skw','eta','psi')
 #plt.gca().invert_yaxis() 
 #plt.show()
 
-'''
 #gal = SkyCoord(ra=np.array(cm['RA'])*u.degree, dec=np.array(cm['DEC'])*u.degree, frame='icrs').galactic
 #plt.plot(cm['RUWE'],gal.b,'o')
 #plt.plot(cm['RUWE'],cm['GLAT'],'rx'); plt.xlabel(r'RUWE'); plt.ylabel(r'GLAT'); plt.axvline(1.4)   
@@ -110,8 +161,6 @@ Measures(data=cm).calculate('std','mad','skw','eta','psi')
 
 #plt.plot(cm['TEFF'],cm['SLOGL'],'rx'); plt.xlabel(r'T$_{eff}$'); plt.ylabel(r'log(T$_{eff}^4$/g [$L_{\odot}$])'); plt.xlabel(r'T$_{eff}$ [K]')  
 #plt.plot(np.log10(cm['TEFF']),cm['LOGG'],'rx'); plt.xlabel(r'T$_{eff}$'); plt.ylabel(r'log($g$)'); plt.xlabel(r'log(T$_{eff}$ [K])')
-
-
 
 #for tr in _tracks:
  #m_ini = tr.split('p')[0][1:]
@@ -129,12 +178,5 @@ Measures(data=cm).calculate('std','mad','skw','eta','psi')
  #if 86 > int(m_ini) > 6 : 
  # plt.plot(J_K[1:230],MK[1:230],'k'); plt.text(J_K[0],MK[0]-0.1,str(m_ini)) 
  # plt.plot(GB_GR[1:250],MG[1:250],'k'); plt.text(GB_GR[0],MG[0]-0.1,str(m_ini))
- 
-
 #plt.gca().invert_yaxis() 
 #plt.show()
-
-
-'''
-
-

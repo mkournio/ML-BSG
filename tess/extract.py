@@ -13,113 +13,194 @@ class Extract(GridTemplate):
 
     def __init__(self, data, plot_key = 'flux', **kwargs):
 
-     self.data = data
+     self.data = data.copy()
      self.plot_key = plot_key
      self._validate()
 
      self.fSPOC = os.listdir(path_to_spoc_files)
+     self.fTSPOC = os.listdir(path_to_tess_spoc_files)
      self.fFFI = os.listdir(path_to_tesscut_files)
      super().__init__(rows_page = PLOT_XLC_NROW, cols_page = PLOT_XLC_NCOL,
-                      fig_xlabel= PLOT_XLABEL['lc'], fig_ylabel=PLOT_YLABEL[plot_key], **kwargs)	 
-     #self._extract_LCs(**kwargs)
+                      fig_xlabel= PLOT_XLABEL['lc'], fig_ylabel=PLOT_YLABEL[plot_key], **kwargs)
+     
+     self.close_plot()
 
+     return
+ 
     def _validate(self):
      pass
 
-    def lightcurves(self, mode = 'SPOC', **kwargs):        
+    def lightcurves(self, time_bin = [], mode = 'ALL', **kwargs):        
         
      if kwargs.get('save_lcs') :         
          if not os.path.exists(path_to_lcs): 
             os.makedirs(path_to_lcs)
-         
-     if mode == 'SPOC':
-         self._extract_spoc(**kwargs)     
-     else:
-         pass
+            
+     stars = self.data['STAR']
+     tics = self.data['TIC']
+     spcs = self.data['SpC']
+     ras = self.data['RA']
+     decs = self.data['DEC']
      
+     for star, spc, tic, ra, dec in zip(stars,spcs,tics,ras,decs):
+         
+         spoc_files = [f for f in self.fSPOC if str(tic) in f]
+         spoc_files = remove_slow_lcs(spoc_files)
+         sec_spoc = [int(f.split('-')[1][1:]) for f in spoc_files]
+         
+         tspoc_files = [f for f in self.fTSPOC if str(tic) in f]
+         sec_tspoc = [int(f.split('-')[2][1:5]) for f in tspoc_files]
+         
+         sect_all = sorted(set(np.concatenate((sec_spoc,sec_tspoc),axis=0)))
+       
+      #   print(star,tic,spoc_files,sec_spoc)
+       #  print(star,tic,tspoc_files,sec_tspoc)
+         
+         if ((len(spoc_files) > 0) or (len(tspoc_files) > 0)) and kwargs.get('save_fits'):
+                 self.ff = FitsObject(get_fits_name(star,tic))                 
+       
+         for sect in sect_all:             
+             
+             sect = 's%04d' % sect
+             spoc_f = [f for f in spoc_files if sect in f]
+             tspoc_f = [f for f in tspoc_files if sect in f]
+             
+             if len(spoc_f) > 0:                 
+                 ax_lc = self._extract_lc(spoc_f[0], time_bin, **kwargs)
+                 print('{}: extracted Sector {} of TIC {} (SPOC)'.format(star,sect,tic))
+             elif (len(tspoc_f) > 0) and (mode == 'ALL'):
+                 ax_lc = self._extract_lc(tspoc_f[0], time_bin, **kwargs)
+                 print('{}: extracted Sector {} of TIC {} (TESS-SPOC)'.format(star,sect,tic))
+                 
+             add_plot_features(ax_lc, mode = self.plot_key, upper_left=star,
+                                      lower_left=spc,lower_right='{} ({})'.format(tic,sect))
+                 
+         if hasattr(self,'ff'):
+             
+             # TO DO
+             if kwargs.get('extract_field'):
+                 
+                 # Adds the field from the latest sector LC file
+                 self.ff.add_aperture_from_spoc(lc)
+                 
+                 ffi_files = [j for j in self.fFFI if (str(ra)[:5] in j) and (str(dec)[:5] in j)]
+                 tpf_v = [f for f in ffi_files if int(f.split('-')[1][1:]) == sect]
+                 
+                 if len(tpf_v) > 0:
+                     tpf_file = tpf_v[0]
+                 else:
+                     tpf_file = ffi_files[0]
+                     
+                 self.ff.add_field_from_tpf(path_to_tesscut_files + tpf_file)
+                 
+             self.ff.close(overwrite=True) 
+             del self.ff
+
      self.close_plot()
      
      return
      
-    def _extract_spoc(self, time_bin_size = None,**kwargs):
+    def _extract_lc(self, f, time_bin, **kwargs):
         
+        if f.startswith('tess'):
+            pipeline = 'spoc'
+            lc_file = os.listdir(path_to_spoc_files + f)[0]
+            path_to_input_file = os.path.join(path_to_spoc_files + f,lc_file)
+        elif f.startswith('hlsp'):
+            pipeline = 'tess-spoc'
+            lc_file = os.listdir(path_to_tess_spoc_files + f)[0]
+            path_to_input_file = os.path.join(path_to_tess_spoc_files + f,lc_file)
+            
+        lc = lk.TessLightCurveFile(path_to_input_file).remove_nans().remove_outliers()
+        
+        # Opening fits using astropy because LightKurve method for
+        # retrieving header is depraced
+        lc_fits = fits.open(path_to_input_file)
+        
+        ax_lc = self.GridAx()
+        
+        # Normalize raw by the polynomial fitting the binned light curve
+        bcoeff = None
+        binned_lcs = []
+        
+        if len(time_bin) > 0:
+            time_bin = sorted(time_bin, reverse = True)            
+            lcb = lc.bin(time_bin_size = time_bin[0])
+            n_lcb, bcoeff = normalize(lcb)
+            binned_lcs.append(n_lcb)
+            
+            for t in time_bin[1:]:
+                lcb = lc.bin(time_bin_size = t)
+                n_lcb, _ = normalize(lcb, coeff = bcoeff)
+                binned_lcs.append(n_lcb)           
+            
+        n_lc, _ = normalize(lc, coeff = bcoeff)
+        if kwargs.get('save_fits'):
+            self.ff.add_lc(n_lc, header_source = lc_fits, binning = 'F', pipeline = pipeline)
+            for t, n_lcb in zip(time_bin,binned_lcs) :
+                self.ff.add_lc(n_lcb, header_source = lc_fits, binning = 'T', binsize = str(t), pipeline = pipeline)
+                
+        # Plot the lightcurves
+        plot_lc_single(ax_lc, n_lc, flux_key = self.plot_key, lc_type = pipeline, m = '.')
+        if len(time_bin) > 0:
+            plot_lc_single(ax_lc, binned_lcs[0], flux_key = self.plot_key, lc_type = 'binned')
+            
+        if self.plot_key == 'flux':
+            plot_lc_single(n_lc, ax=ax_lc, flux_key = 'fitmodel', m = '--', lc_type = 'fit')            
+         
+        lc_fits.close()
+        
+        return ax_lc
+    
+    def header_key(self, key = 'TIMEDEL', mode = 'ALL',  **kwargs):
+               
         stars = self.data['STAR']
         tics = self.data['TIC']
         spcs = self.data['SpC']
         ras = self.data['RA']
         decs = self.data['DEC']
-
+        key_vect = []
+        
         for star, spc, tic, ra, dec in zip(stars,spcs,tics,ras,decs):
             
-         files = [f for f in self.fSPOC if str(tic) in f]
-         files = remove_slow_lcs(files)
-         sects = [int(f.split('-')[1][1:]) for f in files]
-         
-         if len(files) > 0 : 
-             
-             s_sects,s_files = zip(*sorted(zip(sects,files)))
-             
-             if kwargs.get('save_fits'):
-                 ff = FitsObject(get_fits_name(star,tic))
-
-             for f, sect in zip(s_files,s_sects):
+            spoc_files = [f for f in self.fSPOC if str(tic) in f]
+            spoc_files = remove_slow_lcs(spoc_files)
+            sec_spoc = [int(f.split('-')[1][1:]) for f in spoc_files]
             
-              print('{}: extracting Sector {} of TIC {} (SPOC)'.format(star,sect,tic))
-
-              lc_file = os.listdir(path_to_spoc_files + f)[0]
-              path_to_input_file = os.path.join(path_to_spoc_files + f,lc_file)
-              lc = lk.TessLightCurveFile(path_to_input_file).remove_nans().remove_outliers()
-              
-              # Opening fits using astropy because LightKurve method for 
-              # retrieving header is depraced              
-              lc_fits = fits.open(path_to_input_file)
-
-              ax_lc = self.GridAx()
-              # Normalize raw by the polynomial fitting the binned light curve              
-              bcoeff = None
-              if time_bin_size is not None:
-                lcb = lc.bin(time_bin_size = time_bin_size) 
-                n_lcb, bcoeff = normalize(lcb)
+            tspoc_files = [f for f in self.fTSPOC if str(tic) in f]
+            sec_tspoc = [int(f.split('-')[2][1:5]) for f in tspoc_files]
+            
+            sect_all = sorted(set(np.concatenate((sec_spoc,sec_tspoc),axis=0)))
+          
+         
+            for sect in sect_all:             
                 
-              n_lc, _ = normalize(lc, coeff = bcoeff)
-                 
-              if kwargs.get('save_fits'): 
-                    ff.add_lc(n_lc, header_source = lc_fits, binning = 'F')
-                    if time_bin_size is not None:
-                        ff.add_lc(n_lcb, header_source = lc_fits, binning = 'T', binsize = str(time_bin_size))
-     
-              # Plot the lightcurves
-              plot_lc_single(ax_lc, n_lc, flux_key = self.plot_key, lc_type = 'spoc', m = '.')              
-              if time_bin_size is not None:
-                  plot_lc_single(ax_lc, n_lcb, flux_key = self.plot_key, lc_type = 'spoc_binned')
-                  
-              if self.plot_key == 'flux':
-                  plot_lc_single(n_lc, ax=ax_lc, flux_key = 'fitmodel', m = '--', lc_type = 'fit')
-              
-              add_plot_features(ax_lc, mode = self.plot_key, upper_left=star,
-                                lower_left=spc,lower_right='{} ({})'.format(tic,sect))        
-     
-             lc_fits.close()
-             
-             if kwargs.get('save_fits'):
-                 
-               if kwargs.get('extract_field'):
-                   
-                # Adds the field from the latest sector LC file   
-                ff.add_aperture_from_spoc(lc)
+                sect = 's%04d' % sect
+                spoc_f = [f for f in spoc_files if sect in f]
+                tspoc_f = [f for f in tspoc_files if sect in f]
                 
-                ffi_files = [j for j in self.fFFI if (str(ra)[:5] in j) and (str(dec)[:5] in j)]
-                tpf_v = [f for f in ffi_files if int(f.split('-')[1][1:]) == sect]
-                if len(tpf_v) > 0:
-                    tpf_file = tpf_v[0]
-                else:
-                    tpf_file = ffi_files[0]
-           
-                ff.add_field_from_tpf(path_to_tesscut_files + tpf_file)
+                if len(spoc_f) > 0:
+                    lc_file = os.listdir(path_to_spoc_files + spoc_f[0])[0]
+                    path_to_input_file = os.path.join(path_to_spoc_files + spoc_f[0],lc_file)
+                elif (len(tspoc_f) > 0) and (mode == 'ALL'):
+                    lc_file = os.listdir(path_to_tess_spoc_files + tspoc_f[0])[0]
+                    path_to_input_file = os.path.join(path_to_tess_spoc_files + tspoc_f[0],lc_file)
+                    
+                lc_fits = fits.open(path_to_input_file)
+                key_vect.append(lc_fits[1].header[key])                
+                lc_fits.close()
                 
-               ff.close(overwrite=True)         
+        
+        import matplotlib.pyplot as plt
+        
+        print('Min {:.4f} - Max {:.4f} - Median {:.4f}'.format(min(key_vect),max(key_vect),np.nanmedian(key_vect)))
+     #   print(sum(np.array(key_vect) >= 0.))
+        plt.hist(key_vect); plt.show()
+       
+        return
 
-        return 
+        
+        
                   
         
 '''        

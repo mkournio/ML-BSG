@@ -71,8 +71,8 @@ class Visualize(GridTemplate):
                 crowdsap = grouped_hdu_raw[-1][-1].header['CROWDSAP']
 
                 axes = self.GridAx(divide=True, ax_scaling = ax_scaling)
-                plot_lc_multi(axes, grouped_hdu_raw, m='.',  flux_key = self.plot_key, lc_type = 'spoc')
-                plot_lc_multi(axes, grouped_hdu_bin, flux_key = self.plot_key, lc_type = 'spoc_binned')
+                plot_lc_multi(axes, grouped_hdu_raw, m='.',  flux_key = self.plot_key, lc_type = 'raw')
+                plot_lc_multi(axes, grouped_hdu_bin, flux_key = self.plot_key, lc_type = 'binned')
                 
                 add_plot_features(axes, mode = self.plot_key, 
                                   upper_left='{} (TIC {})'.format(star,tic), 
@@ -84,8 +84,8 @@ class Visualize(GridTemplate):
                 for r,b,sect in zip(hdu_raw,hdu_bin,sectors):
                     ax = self.GridAx()
                     
-                    plot_lc_single(ax, r, m='.', flux_key = self.plot_key, lc_type = 'spoc')
-                    plot_lc_single(ax, b, flux_key = self.plot_key, lc_type = 'spoc_binned')
+                    plot_lc_single(ax, r, m='.', flux_key = self.plot_key, lc_type = r.header['PIPELINE'])
+                    plot_lc_single(ax, b, flux_key = self.plot_key, lc_type = 'binned')
                     
                     add_plot_features(ax, mode = self.plot_key, 
                                       upper_left=star, lower_left=spc,

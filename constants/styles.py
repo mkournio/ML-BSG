@@ -1,8 +1,11 @@
+# scatter plot
+plot_mcs = {'s' : 25, 'marker' : 's', 'ls': 'None'}
+plot_mw = {'s' : 30, 'marker' : '.', 'ls': 'None'}
 
-plot_all = {'ms' : 6, 'c' : 'c', 'marker' : '.', 'ls': 'None'}
-plot_LBV  = {'ms' : 14, 'c' : 'k', 'marker' : 'o', 'mew': 1.5, 'ls': 'None', 'mfc' : 'None'}
+#plot
+plot_LBV  = {'ms' : 13, 'c' : 'k', 'marker' : 'd', 'mew': 0.7, 'ls': 'None', 'mfc' : 'None'}
+plot_BREs  = {'ms' : 12, 'c' : 'k', 'marker' : 'p', 'mew': 0.7, 'ls': 'None', 'mfc' : 'None'}
 plot_cLBV = {'ms' : 16, 'c' : 'k', 'marker' :'$\u25cc$', 'ls': 'None', 'mfc' : 'None'}
-plot_BRC  = {'ms' : 13, 'c' : 'k', 'marker' : 's', 'mew': 1.5, 'ls': 'None', 'mfc' : 'None'}
 plot_cBRC  = {'ms' : 15, 'c' : 'k', 'marker' : '$\u2b1a$', 'ls': 'None', 'mfc' : 'None'}
 
 PLOT_XLC_NCOL = 2
@@ -76,27 +79,48 @@ PLOT_PARAMS =	{
          	'xtick.labelsize': 23,
          	'ytick.labelsize': 23}
 		}
+    
+CBAR_TITLE_SIZE = 11
+CBAR_TICK_SIZE = 10
+
+
+def styled_label(key):
+    
+    if 'log' in key:
+        
+        return r'log$_{10}$(%s)' % STY_LB[key.replace('log','')]
+    
+    elif 'e_' in key:
+        
+        return r'var(%s)' % STY_LB[key.replace('e_','')]
+    
+    else:
+        return STY_LB[key]
 
 STY_LB = 	{
-		'VSINI' : r'$v$sin $i$','MDOT' : r'$\dot{M}$',
-		'LOGLM': r'log(L/M)', 'LOGL' : r'log(L/L$_{\odot}$)', 'LOGQ' : r'log$Q$',
-		'LOGG' : r'log$g$', 'MASS' : '$M_{evol}$', 'VMAC': r'$v_{mac}$ [km s$^{-1}$]', 'VMIC' : r'$v_{mic}$ [km s$^{-1}$]',
-		'NABUN' : r'N/H', 'LOGD' : r'log$D$', 'S_MASS' : r'$M_{Rg}$',
-		'LOGW' : r'log($W$ [mag])', 'LOGR0' : r'log($R_{0}$ [mag])', 'TAU' : r'$\tau$ [d]', 'GAMMA' : r'$\gamma$' ,
-		'TEFF' :  r'log(T$_{\rm eff}$ [K])', 'TESS_time' : r'Time $-$ 2457000 [BTJD d]',
-		'TESS_freq' : r'Frequency [d$^{-1}$]','S_LOGL' : r'log($L$/L$_{\odot})$',
-		'MAD' : r'MAD', 'SVAR': r'$\sigma$ [mag]', 'ZCROSS' : r'$D_{0}$', 'PSI': r'$\psi^2$',
-		'ETA' : r'log($\eta$)', 'SKEW': r'skw', 'A_V' : r'$A_{V}$', 'EDD' : r'$\Gamma_{e}$',
-		'GABS' : r'$M_{G}$ [mag]', 'VCHAR' : r'log($\nu_{char}$ [d$^{-1}$])',
+		'VSINI' : r'$v$sin $i$','MDOT' : r'$\dot{M}$','LOGLM': r'log(L/M)', 
+        'LOGQ' : r'log$_{10}Q$', 'LOGG' : r'log$g$', 'MASS' : '$M_{evol}$', 'VMAC': r'$v_{mac}$ [km s$^{-1}$]', 
+        'VMIC' : r'$v_{mic}$ [km s$^{-1}$]', 'NABUN' : r'N/H', 'LOGD' : r'log$_{10}D$', 'S_MASS' : r'$M_{Rg}$',
+		'LOGW' : r'log$_{10}$($W$ [mag])', 'LOGR0' : r'log$_{10}$($R_{0}$ [mag])', 'TAU' : r'$\tau$ [d]', 'GAMMA' : r'$\gamma$' ,
+		'TEFF' :  r'T$_{\rm eff}$ [K]', 'SpCt' : 'B(*)I/II', 'TESS_time' : r'Time $-$ 2457000 [BTJD d]','TESS_freq' : r'Frequency [d$^{-1}$]',
+        'SLOGL' : r'log$_{10}(\mathcal{L}/\mathcal{L}_{\odot})$', 'LOGL' : r'log$_{10}$($L$/L$_{\odot})$',        
+		'MAD' : r'MAD', 'STD': r'$\sigma$ [mag]', 'ZCROSS' : r'$D_{0}$', 'PSI': r'$\psi^2$', 'IQR': r'IQR',
+		'ETA' : r'$\eta$', 'SKW': r'skw', 'A_V' : r'$A_{V}$', 'EDD' : r'$\Gamma_{e}$', 'KRT': r'kurt', 'ZCR': r'Zcr',
+        'MSM' : r'MSM', 'MSP' : r'$\bar{{E_s}^2}$', 'MSD' : r'$\sigma_{E_s}$', 'MSC' : r'$\kappa_{E_s}$', 'MSS' : r'$m_{E_s}$',
+        'AVECROWD': r'CROWDSAP', 'MINCROWD': r'CROWDSAP', 'Tmag': r'T [mag]',
+		'MG' : r'$M_{G}$ [mag]', 'MJ' : r'$M_{J}$ [mag]', 'MH' : r'$M_{H}$ [mag]', 'MK': r'$M_{K}$ [mag]', 
+        'JK': r'$J-K_{s}$', 'VCHAR' : r'log($\nu_{char}$ [d$^{-1}$])',
 		'FF' : r'$f_{i}$ [d$^{-1}$]', 'A_FF' : r'$A_{i}$ [mag]', 'HF' : r'$jf$', 'FFR' : r'$f_{1}/f_{2}$', 
 		'A_FFR' : r'$A_{f_{1}}/A_{f_{2}}$', 'BETA' : r'$\beta$', 'VINF' : r'$v_{inf}$ [km s$^{-1}$]',
 		'INDFF' : r'#$f_{i}$','INDFFS' : r'#$f_{i,sec}$'}
 
 LC_COLOR = 	{
 		'spoc'	 : 'c',
-        'spoc_binned': 'b',
+        'tess-spoc' : 'lime',
+        'binned': 'k',
 		'tesscut'	 : 'r',
         'fit': 'k',
+        'raw': '0.8',
 		'any': 'k'
 		}
 

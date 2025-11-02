@@ -2,7 +2,7 @@ import numpy as np
 from methods import *
 
 # INITIAL CATALOGS TO COMBILE FROM SORTED BY PREFERENCE IN DOUBLE ENTRIES
-INI_CATS = ['EMS','SIMBAD-LBVs','deBURGOS+24','WESMAYER+22','SEARLE+08','McERLEAN+99','CROWTHER+06','FIRNSTEIN+12', 'FRASER+10', 'HAUCKE+19','SIMBAD-BSGs']
+INI_CATS = ['EMS','SIMBAD-LBVs','deBURGOS+24','WESMAYER+22','SEARLE+08','McERLEAN+99','CROWTHER+06','FIRNSTEIN+12', 'HAUCKE+19','SIMBAD-BSGs']
         
 XM_CATS = {
           'vizier:IV/38/tic' : ['TIC','Tmag'],
@@ -36,7 +36,7 @@ APPEND_COLS= {
           'McERLEAN+99': {'REF': 'M99', 'GAL': 'MW', **sbcoord_d('RA','DEC',keys=['STAR'])},
           'WESMAYER+22': {'REF': 'W22', 'GAL': 'MW', **sbcoord_d('RA','DEC',keys=['STAR'])},
           'CROWTHER+06': {'REF': 'C06', 'GAL': 'MW', **sbcoord_d('RA','DEC',keys=['STAR'])},
-          'FRASER+10' : {'REF': 'F10', 'GAL': 'MW', **coord_h2d('RA','DEC',keys=['RAh','DEC']), 'e_TEFF': 1000, 'e_LOGG': 0.1},
+        #  'FRASER+10' : {'REF': 'F10', 'GAL': 'MW', **coord_h2d('RA','DEC',keys=['RAh','DEC']), 'e_TEFF': 1000, 'e_LOGG': 0.1},
           'HAUCKE+19' : {'REF': 'H19', 'GAL': 'MW', **coord_h2d('RA','DEC',keys=['RAh','DEC'])},
           'deBURGOS+24' : {'REF': 'D24', 'GAL': 'MW', **meancol('e_TEFF', 'e_LOGG', keys=[['e_TEFF','E_TEFF'],['e_LOGG','E_LOGG']])},
           'vizier:I/311/hip2' : {'HDIST': lambda x: 1./(1e-3*x['Plx'])},
@@ -45,9 +45,10 @@ APPEND_COLS= {
           'combined': {
                       **galcoord('GLON','GLAT',keys=['RA','DEC']),
                       **dist('DIST',keys=['GAL','GDIST']),
-                      **absmag('MK','MG',keys=['Kmag','Gmag','DIST']),
+                      **absmag('MJ','MH','MK','MG',keys=['Jmag','Hmag','Kmag','Gmag','DIST']),
                       **diffcol('BR','JK',keys=[['BPmag','RPmag'],['Jmag','Kmag']]),
                       **slogl('SLOGL',keys=['TEFF','LOGG']),
+                      **spc2t('SpCt',keys=['SpC'])
                       }
           }	
           

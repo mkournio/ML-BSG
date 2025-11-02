@@ -182,6 +182,17 @@ def get_filename(fname,fformat):
             
         return '%s_%s.%s' % (fname,fl_id,fformat)
     
+def colorbar(vmin, vmax, cbar='rainbow', **kwargs):
+    
+    import matplotlib.cm as cm
+    from matplotlib.colors import Normalize
+    
+    cmap = cm.get_cmap(cbar).reversed()
+    #cmap.set_under('white')
+    norm = Normalize(vmin,vmax)
+    
+    return cmap, norm
+
 class GridTemplate(object):
 
 	# Class for the creation and management of plotting grid
@@ -192,6 +203,7 @@ class GridTemplate(object):
                  join_pages = False,
                  params = PLOT_PARAMS['lc'],
                  figsize = SIZE_GRID,
+                 mode = None,
                  inter = False,
                  **kwargs):
 
@@ -204,12 +216,11 @@ class GridTemplate(object):
         self.inter = inter
         self.figsize = figsize
         self.join_pages = join_pages
+        self.mode = mode
         
         self.filename = kwargs.pop('plot_name','GridPlot')
         self.fig_xlabel  = kwargs.pop('fig_xlabel','X LABEL')
         self.fig_ylabel  = kwargs.pop('fig_ylabel','Y LABEL')
-        self.coll_x = kwargs.pop('coll_x',False)
-        self.coll_y = kwargs.pop('coll_y',False)
         
 		#Initiating pdf book
         if self.join_pages:
@@ -233,36 +244,43 @@ class GridTemplate(object):
             if self.ind > 0:
                 self._page_close()	# Close/Save the existing grid
                 
-            self._grid_new()
-
+            self._grid_new()           
+       
         ax = self.fig.add_subplot(self.gs[plot_row,plot_col])
         self.ax_pos = plot_row
         
-        if plot_row < self.rows_page - 1:
-            if self.coll_x:
+        if self.mode == 'matrix':            
+            ax.sharey(self.fig.axes[plot_row*self.cols_page])
+            ax.sharex(self.fig.axes[plot_col]) 
+            
+            if plot_row < self.rows_page - 1:
                 ax.tick_params(labelbottom=False)
                 self.gs.update(hspace=0.05)
-        else:
+            else:
+                if 'col_labels' in self.__dict__:
+                    ax.set_xlabel(styled_label(self.col_labels[plot_col]))                    
+            if plot_col > 0:
+                ax.tick_params(labelleft=False)
+                self.gs.update(wspace=0.05)
+            else:
+                if 'row_labels' in self.__dict__:
+                    ax.set_ylabel(styled_label(self.row_labels[plot_row]))
+                    
+        elif self.mode == 'zip':
             if 'col_labels' in self.__dict__:
-                ax.set_xlabel(STY_LB[self.col_labels[pl_ot_col]])
+                ax.set_xlabel(styled_label(self.col_labels[self.ind]))
+            if 'row_labels' in self.__dict__:
+                    ax.set_ylabel(styled_label(self.row_labels[self.ind]))
                 
         if plot_row == 0 and 'sup_xlabels' in self.__dict__:
             ax.set_title(self.sup_xlabels[plot_col])
-            
-        if plot_col > 0:
-            if self.coll_y:
-                ax.tick_params(labelleft=False)
-                self.gs.update(wspace=0.05)
-        else:
-            if 'row_labels' in self.__dict__:
-                ax.set_ylabel(STY_LB[self.row_labels[plot_row]])	
                 
         if 'xlim' in self.__dict__: ax.set_xlim(self.xlim)
         if 'ylim' in self.__dict__: ax.set_ylim(self.ylim)
         
         if divide:
             ax = self._axis_divide(ax,ax_scaling)
-        
+
         self.ind += 1
         
         return ax
@@ -303,14 +321,30 @@ class GridTemplate(object):
         
         return
     
+    def add_colorbar(self, norm, cmap, label = '', loc = [0.91, 0.11, 0.01, 0.77], extend = 'neither', **kwargs):
+        
+        if hasattr(self,'fig'):
+            
+            import matplotlib.cm as cm
+            
+            cbar_ax = self.fig.add_axes(loc)
+            cmmapable = cm.ScalarMappable(norm, cmap)
+            cmmapable.set_array([])
+            
+            cbar=self.fig.colorbar(cmmapable, cax=cbar_ax, extend=extend, **kwargs)
+            cbar.ax.set_title(styled_label(label), size=CBAR_TITLE_SIZE)
+            cbar.ax.tick_params(labelsize=CBAR_TICK_SIZE)
+            
+        return
+        
     def _page_close(self):
         
         #Close/Save grid in page
         
         self._save_output()
-        if self.inter: 
-            plt.show()
-        
+        if self.inter:
+            plt.show(block=True)
+            
         self.fig.clf()
         plt.close(self.fig)
         
@@ -347,7 +381,3 @@ class GridTemplate(object):
                 os.remove(r)
             
         return
-        
-        
-        
-        

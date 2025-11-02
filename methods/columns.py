@@ -133,7 +133,14 @@ def pow10(*nc,keys):
         func_v.append(f)
                
       return func_v
-              
+ 
+@dict_func     
+def spc2t(*nc,keys):
+    
+    spc_key = keys[0]
+
+    return [lambda x: sptype_to_temp(x[spc_key])]
+
 def merged_col(col1,col2):
 
       mcol = Column(col2, dtype='object') 
