@@ -25,7 +25,7 @@ cm = PostProcess(xc).xmatch().append('combined'); cm.sort(['RA'])
 LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
 cm = cm[LOC]
 cm = cm[(cm['MK']<-2.5)]
-#cm = cm[1:3]
+#cm = cm[:20]
 
 #### QUERYING FROM MAST - SPOC LIGHTCURVES
 # 17/10/25 - last update
@@ -60,12 +60,13 @@ cm = cm[(cm['MK']<-2.5)]
 #LCs.header_key(key='NAXIS2')
 #LCs.lightcurves(time_bin = [0.00694,0.02083], save_fits = True, extract_field = False)
 
+
 time_metrics= ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
 m = TimeDomain(data = cm, measures = time_metrics)
 
 #m.reset_headers(primary=True, sectors=False)
 #m.calculate()
-m.header_combine(mode = 'average', bin_size = '30m')
+m.header_combine(mode = 'average', bin_size = '10m')
 
 f = Features(data = cm)
 f.cols_from_headers(time_metrics + ['MINCROWD','AVECROWD'], update_table = True)
@@ -106,9 +107,9 @@ f.scatter_plot(x=['MSC','MSD'], y=['PSI','MSP','e_PSI','MK','e_MSP'],
 #print(cm[('STAR','TEFF',) + metrics].pprint(max_lines=-1,max_width=-1))
 #print(cm.columns)
 
-
+#cm = cm[:20]
 # SPOC LCs VISUALIZATION
-#Visualize(data=cm, plot_name='BSGs', plot_key='dmag', rows_page=7, cols_page=1,join_pages=False, output_format='png').lightcurves(stitched=True)
+#Visualize(data=cm, plot_name='BSGs', plot_key='dmag', rows_page=7, cols_page=1,join_pages=False, output_format='png').lightcurves(stitched=True, bin_size = '10m')
 
 
 #LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]

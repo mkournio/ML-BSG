@@ -22,7 +22,7 @@ class TimeDomain(object):
                  **kwargs):
         
         self._validate()
-        self.data = data
+        self.data = data.copy()
         
         if 'MSE' in measures:
             measures.remove('MSE')
@@ -234,3 +234,18 @@ class TimeDomain(object):
                 mval[i] = mss
                 
         return mval 
+    
+class FrequencyDomain(object):
+    
+    def __init__(self,
+                 data,
+                 **kwargs):
+        
+        self.data = data.copy()
+        self.validate()
+        
+        return
+    
+    def _validate(self):
+        
+        pass

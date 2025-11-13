@@ -29,72 +29,83 @@ class Visualize(GridTemplate):
      self.data = data
      self.plot_key = plot_key
 
-     super().__init__(rows_page = rows_page, cols_page = cols_page,
-                      fig_xlabel= PLOT_XLABEL['lc'], fig_ylabel=PLOT_YLABEL[plot_key], **kwargs)	 
+     super().__init__(rows_page = rows_page, 
+                      cols_page = cols_page,
+                      fig_xlabel= PLOT_XLABEL['lc'], 
+                      fig_ylabel=PLOT_YLABEL[plot_key], 
+                      **kwargs)	 
      
      return
      
     def _validate(self):
         pass
     
-    def lightcurves(self, stitched = False, **kwargs):
-       
-       stars = self.data['STAR']
-       ras = self.data['RA']
-       decs = self.data['DEC']
-
-       
-       tics = self.data['TIC']
-       spcs = self.data['SpC']
-
-       for star, spc, ra, dec, tic in zip(stars,spcs,ras,decs,tics):
-           
-        filename = [f for f in os.listdir(path_to_output_fits) if star in f]
-        if len(filename) > 0:
+    def lightcurves(self, 
+                    stitched = False, 
+                    bin_size = None, 
+                    **kwargs):
+        
+        if bin_size not in ['10m','30m']:
+            raise Exception('Set bin_size among 10m and 30m. Aborting..')
             
-            print('plotting {} {:.4f},{:.4f}'.format(star,ra,dec))
-
+        if bin_size == '10m':
+            bin_size = 0.00694
+        elif bin_size == '30m':
+            bin_size = 0.02083
             
-            hdulist = fits.open(os.path.join(path_to_output_fits,filename[0]))
+        ltab = self.data.copy()
+        log_file = open("log_vis", "w")
+        
+        for l in ltab:
             
-            sectors = get_sectors_from_hdulist(hdulist)
-            hdu_raw = [get_hdu_from_keys(hdulist, SECTOR = s, BINNING = 'F') for s in sectors]
-            hdu_bin = [get_hdu_from_keys(hdulist, SECTOR = s, BINNING = 'T') for s in sectors]
+            star = l['STAR']
+            tic = l['TIC']
+            spc = l['SpC']
             
-            if stitched:
+            filename = [f for f in os.listdir(path_to_output_fits) if star in f]
+            if len(filename) > 0:
                 
-                minmax = get_minmax_flux(hdu_bin, flux_key = self.plot_key)
-                grouped_hdu_raw = group_consecutive_hdus(hdu_raw,sectors)
-                grouped_hdu_bin = group_consecutive_hdus(hdu_bin,sectors)
+                print('plotting {} TIC {}'.format(star,tic))
                 
-                ax_scaling = get_ax_scaling(grouped_hdu_raw)
-                crowdsap = grouped_hdu_raw[-1][-1].header['CROWDSAP']
-
-                axes = self.GridAx(divide=True, ax_scaling = ax_scaling)
-                plot_lc_multi(axes, grouped_hdu_raw, m='.',  flux_key = self.plot_key, lc_type = 'raw')
-                plot_lc_multi(axes, grouped_hdu_bin, flux_key = self.plot_key, lc_type = 'binned')
+                hdulist = fits.open(os.path.join(path_to_output_fits,filename[0]))
                 
-                add_plot_features(axes, mode = self.plot_key, 
-                                  upper_left='{} (TIC {})'.format(star,tic), 
-                                #  upper_right='CROWD {:.2f}'.format(crowdsap),
-                                  lower_left=spc, y_min_max = minmax)
- 
-            else:
-                
-                for r,b,sect in zip(hdu_raw,hdu_bin,sectors):
-                    ax = self.GridAx()
+                sectors = get_sectors_from_hdulist(hdulist)
+                hdu_raw = [get_hdu_from_keys(hdulist, SECTOR = s, BINNING = 'F') for s in sectors]
+                hdu_bin = [get_hdu_from_keys(hdulist, SECTOR = s, BINNING = 'T', BINSIZE = str(bin_size)) for s in sectors]
                     
-                    plot_lc_single(ax, r, m='.', flux_key = self.plot_key, lc_type = r.header['PIPELINE'])
-                    plot_lc_single(ax, b, flux_key = self.plot_key, lc_type = 'binned')
+                if stitched:
                     
-                    add_plot_features(ax, mode = self.plot_key, 
-                                      upper_left=star, lower_left=spc,
-                                      lower_right='{} ({})'.format(tic,sect))
-
-        else:
-            pass
-           # print('{} not found in database'.format(star))
-            
-       self.close_plot()
-       
-       return
+                    minmax = get_minmax_flux(hdu_bin, flux_key = self.plot_key)
+                    grouped_hdu_raw = group_consecutive_hdus(hdu_raw,sectors)
+                    
+                    ax_scaling = get_ax_scaling(grouped_hdu_raw)
+                    axes = self.GridAx(divide=True, ax_scaling = ax_scaling)
+                    plot_lc_multi(axes, grouped_hdu_raw, m='.',  flux_key = self.plot_key, lc_type = 'raw')
+                    
+                    grouped_hdu_bin = group_consecutive_hdus(hdu_bin,sectors)
+                    plot_lc_multi(axes, grouped_hdu_bin, flux_key = self.plot_key, lc_type = 'binned')
+                        
+                    add_plot_features(axes, mode = self.plot_key,
+                                      upper_left='{} (TIC {})'.format(star,tic), 
+                                    #  upper_right='CROWD {:.2f}'.format(crowdsap),
+                                      lower_left=spc, y_min_max = minmax)
+                    
+                else:
+                    
+                     for r,b,sect in zip(hdu_raw,hdu_bin,sectors):
+                         
+                         ax = self.GridAx()
+                         
+                         plot_lc_single(ax, r, m='.', flux_key = self.plot_key, lc_type = r.header['PIPELINE'])
+                         plot_lc_single(ax, b, flux_key = self.plot_key, lc_type = 'binned')
+                         
+                         add_plot_features(ax, mode = self.plot_key,
+                                           upper_left=star, lower_left=spc,
+                                           lower_right='{} ({})'.format(tic,sect))
+                         
+                log_file.write('{:30s} {:+.8f} {:+.8f} {:10s} {} {}\n'.format(star,l['RA'],l['DEC'],spc,tic,get_filename(self.filename,self.output_format)))
+                
+        self.close_plot()
+        log_file.close()
+        
+        return

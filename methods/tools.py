@@ -153,6 +153,14 @@ class FitsObject(object):
 
        return
    
+      def add_ls(self,
+                 ls,
+                 header_source = None,
+                 **kwargs):
+          
+          
+       return
+   
       def add_field_from_tpf(self,tpf_file,timestamp = 0): 
        
        tpf = fits.open(tpf_file)          

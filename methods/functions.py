@@ -54,6 +54,21 @@ def to_deg(ra,dec):
 	c = SkyCoord(ra, dec, unit=(u.hourangle, u.deg))
 
 	return c.ra.degree, c.dec.degree
+	
+def sptype_to_temp(sp_v):
+    
+    t_v = []
+    
+    for sp in sp_v:
+        
+        try:
+            t = float(re.findall(r"(?:\d*\.*\d+)", sp)[0])
+        except:
+            t = np.nan
+            
+        t_v.append(t)
+        
+    return t_v
 
 def mask_outliers(m_arr, m = 3.):
 

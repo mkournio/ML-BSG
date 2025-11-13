@@ -6,12 +6,45 @@ from methods.functions import *
 from methods.plot import *
 from methods.tools import FitsObject, get_fits_name
 from astropy.io import fits
+from astropy import units as u
+import matplotlib.pyplot as plt
+from scipy.optimize import curve_fit
+
+def max_freq_sn(pg, sn_window, freq_mask):
+    
+    v_freq = pg.frequency.value
+    v_pow = pg.power.value
+    maxf = pg.frequency_at_max_power.value
+    
+    mask_low = (maxf - sn_window/2. < v_freq) & (v_freq < maxf - freq_mask)
+    mask_up = (v_freq > maxf + freq_mask) & (maxf + sn_window/2. > v_freq) 
+    sn_mask = mask_low | mask_up
+    
+    return max(pg.power) / np.std(v_pow[sn_mask])
+
+def sinusoidal(freq,off,ampl,phase):
+    
+    if len(ampl) != len(phase):
+        raise IndexError('Inconsistent lengths for amplitudes and phases.')
+        
+    freq = freq * np.array(range(1,len(ampl)+1))
+   
+    func = lambda x, x0: off + sum(ampl * np.sin(2 * np.pi * freq * (x-x0) + phase))  
+    vfunc = np.vectorize(func)
+    
+    return lambda t: vfunc(t,t[0])
+
+
+def lorentz(X,w,zero,tau,gamma):
+    
+    return w + ( zero / ( 1 + (2 * np.pi * tau * X)**gamma))
 
 class Extract(GridTemplate):
     
-    # Class for 
-
-    def __init__(self, data, plot_key = 'flux', **kwargs):
+    def __init__(self, 
+                 data, 
+                 plot_key = 'flux', 
+                 **kwargs):
 
      self.data = data.copy()
      self.plot_key = plot_key
@@ -20,6 +53,8 @@ class Extract(GridTemplate):
      self.fSPOC = os.listdir(path_to_spoc_files)
      self.fTSPOC = os.listdir(path_to_tess_spoc_files)
      self.fFFI = os.listdir(path_to_tesscut_files)
+     
+     # probably the following line should move  to lightcurves functions
      super().__init__(rows_page = PLOT_XLC_NROW, cols_page = PLOT_XLC_NCOL,
                       fig_xlabel= PLOT_XLABEL['lc'], fig_ylabel=PLOT_YLABEL[plot_key], **kwargs)
      
@@ -30,7 +65,10 @@ class Extract(GridTemplate):
     def _validate(self):
      pass
 
-    def lightcurves(self, time_bin = [], mode = 'ALL', **kwargs):        
+    def lightcurves(self, 
+                    time_bin = [], 
+                    mode = 'ALL', 
+                    **kwargs):        
         
      if kwargs.get('save_lcs') :         
          if not os.path.exists(path_to_lcs): 
@@ -100,7 +138,10 @@ class Extract(GridTemplate):
      
      return
      
-    def _extract_lc(self, f, time_bin, **kwargs):
+    def _extract_lc(self, 
+                    f, 
+                    time_bin, 
+                    **kwargs):
         
         if f.startswith('tess'):
             pipeline = 'spoc'
@@ -152,7 +193,10 @@ class Extract(GridTemplate):
         
         return ax_lc
     
-    def header_key(self, key = 'TIMEDEL', mode = 'ALL',  **kwargs):
+    def header_key(self, 
+                   key = 'TIMEDEL', 
+                   mode = 'ALL',  
+                   **kwargs):
                
         stars = self.data['STAR']
         tics = self.data['TIC']
@@ -191,15 +235,176 @@ class Extract(GridTemplate):
                 lc_fits.close()
                 
         
-        import matplotlib.pyplot as plt
         
         print('Min {:.4f} - Max {:.4f} - Median {:.4f}'.format(min(key_vect),max(key_vect),np.nanmedian(key_vect)))
      #   print(sum(np.array(key_vect) >= 0.))
         plt.hist(key_vect); plt.show()
        
         return
-
+    
+    def periodograms(self,
+                     stitched = False,
+                     prewhitening = False,
+                     **kwargs):
         
+        stars = self.data['STAR']
+        tics = self.data['TIC']
+        
+        for star, tics in zip(stars,tics):
+            
+            fits_files = [j for j in os.listdir(path_to_output_fits) if (star in j)]
+            
+            if len(fits_files) > 0:
+                
+                ff = fits.open(get_fits_name(star,tic))
+               
+                if stitched:
+                    
+                    # TO DO - calculate LS for stitched, 
+                    # need to decide how it can be saved on the fits files                   
+                    pass
+                
+                else:
+                    for hdu in ff[1:]:
+                        
+                        self.lomb_scargle(hdu,**kwargs)                        
+                        #add new hdu LS in fits file
+                        
+                    ff.writeto(get_fits_name(star,tic), overwrite=True)
+                    ff.close()
+                    
+        return
+
+    @staticmethod
+    def lombscargle(f,
+                  prewhitening = False,
+                  flux_key = 'dmag', 
+                  nterms = 1,
+                  red_noise = True,
+                  lc_plot = False,
+                  ls_plot = False,
+                  **kwargs):
+        
+        lc = f.copy()
+        
+        if isinstance(lc, lk.LightCurve):
+            lc = lc.remove_nans()
+        else: 
+            if isinstance(lc, fits.BinTableHDU):
+                time = lc.data['time']
+                flux = lc.data[flux_key]
+            elif (isinstance(lc, np.ndarray)) or (isinstance(lc, list)):
+                time = lc[0]
+                flux = lc[1]
+            else:
+               raise TypeError('Object light curve does not have supportive format!') 
+                    
+            flux = flux[20:-20]; time = time[20:-20]            
+            lc = lk.LightCurve(time=time,flux=flux).remove_nans()
+            
+        ls_method = 'fast'
+        if nterms > 1: ls_method = 'fastchi2'
+        fit_model = []
+            
+        lc_ini = lc.copy()
+        pg = lc_ini.to_periodogram(ls_method=ls_method,nterms=nterms)
+        pg_ini = pg.copy()       
+
+        model = pg.model(time=lc_ini.time,frequency=pg.frequency_at_max_power)        
+        theta  = pg.model_params(frequency=pg.frequency_at_max_power)
+        sn_window = kwargs.pop('sn_window',1.)
+        freq_mask = kwargs.pop('freq_mask',1/27.)
+        sn_val = max_freq_sn(pg, sn_window, freq_mask)
+        
+        fit_model.append([pg.frequency_at_max_power.value,sn_val.value,theta])
+        #sinf=sinusoidal(m_freqs[-1], m_offsets[-1], m_amplitudes[-1], m_phases[-1])
+        #siny = sinf(lc.time.value)
+        
+        if prewhitening:
+            
+            prw_sn = kwargs.pop('prw_sn',4.)
+            prw_maxn = kwargs.pop('prw_maxn',30.)
+            
+            ind = 0
+            while (ind < prw_maxn) and (sn_val >= prw_sn):
+          
+                prw_res = lc.copy()
+                prw_res.flux = prw_res.flux - model.flux
+                
+                pg = prw_res.to_periodogram(ls_method=ls_method,nterms=nterms)                
+                sn_val = max_freq_sn(pg, sn_window, freq_mask)
+                if sn_val < prw_sn:
+                    break
+                
+                model.flux = model.flux + pg.model(time=prw_res.time, frequency=pg.frequency_at_max_power).flux                
+                theta  = pg.model_params(frequency=pg.frequency_at_max_power)  
+                fit_model.append([pg.frequency_at_max_power.value,sn_val.value,theta])                
+                #sinf=sinusoidal(m_freqs[-1], m_offsets[-1], m_amplitudes[-1], m_phases[-1])
+                #siny += sinf(lc.time.value)              
+
+                ind += 1
+                
+        if red_noise:
+            popt, perr = Extract.rednoise(pg, fit_scale='log')
+            print(popt,perr)
+            if prewhitening: 
+                popt_ini, perr_ini = Extract.rednoise(pg_ini, fit_scale='log') 
+                print(popt_ini,perr)
+
+            
+        ax_lc = None
+        if lc_plot:
+            _, ax_lc = plt.subplots()
+            
+            ax_lc.plot(lc.time.value,lc.flux.value)
+            ax_lc.plot(model.time.value,model.flux.value,'r')
+            #ax_lc.plot(lc.time.value,siny,'g--')
+                
+        ax_ls = None
+        if ls_plot:
+            _, ax_ls = plt.subplots()
+            x = pg.frequency.value
+            y = np.log10(pg.power.value)
+            ax_ls.plot(x,y,'k')
+            
+            if prewhitening:
+                x = pg_ini.frequency.value
+                y = np.log10(pg_ini.power.value)
+                ax_ls.plot(x,y,'b')
+                if red_noise: ax_ls.plot(x,np.log10(lorentz(x,*popt_ini)),'r--')
+                
+            if red_noise: ax_ls.plot(x,np.log10(lorentz(x, *popt)),'r-')
+   
+            ax_ls.set_xscale('log')
+            ax_ls.set_xlim([0.05,x[-1]])                
+            ax_ls.set_ylim([-6.5,None])                
+            
+        return fit_model, lc.time[0].value
+    
+    @staticmethod
+    def rednoise(p,
+                 fit_scale = 'log',
+                 low_lim = 2/27., 
+                 up_lim = np.inf,
+                 **kwargs):
+        
+        pg = p.copy()
+        
+        nan_ind = np.isnan(pg.power)
+        x = pg.frequency[~nan_ind].value 
+        y = pg.power[~nan_ind].value
+        fit_func = lorentz        
+        if fit_scale == 'log':
+            y = np.log10(y)
+            fit_func = lambda x,w,z,t,g: np.log10(lorentz(x,w,z,t,g))
+       
+        mask = (np.array(x) > low_lim) & (np.array(x) < up_lim)   
+        popt, pconv = curve_fit(fit_func,x[mask],y[mask], p0=[1e-5, 1e-3, 0.1, 3.])#,bounds=bounds)
+        perr = np.sqrt(np.diag(pconv))
+        
+        return popt, perr
+    
+    
         
                   
         

@@ -25,3 +25,5 @@ test/
 *.zip
 
 tasoc.py
+
+log_vis

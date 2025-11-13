@@ -20,6 +20,7 @@ PLOT_XLABEL =   {
 PLOT_YLABEL =   {
     'flux' : 'Flux [e-/s]',
     'nflux': 'Normalized flux',
+    'ls' : r'Amplitude (mag)',
     'dmag' : r'$\Delta$m [mag]'
     }
         
@@ -120,7 +121,7 @@ LC_COLOR = 	{
         'binned': 'k',
 		'tesscut'	 : 'r',
         'fit': 'k',
-        'raw': '0.8',
+        'raw': 'pink',
 		'any': 'k'
 		}
 
