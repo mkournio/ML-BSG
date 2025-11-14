@@ -33,10 +33,10 @@ def get_hdu_from_keys(hdulist,**kwargs):
         
         return None
     else:
-        if len(hdu) > 1:
-            warnings.warn('More than 1 headers found; returned the first.')
+       # if len(hdu) > 1:
+       #     warnings.warn('More than 1 headers found; returned the first.')
             
-        return hdu[0]  
+        return hdu  
       
 def get_sectors_from_hdulist(hdulist,**kwargs):
     

@@ -25,7 +25,7 @@ cm = PostProcess(xc).xmatch().append('combined'); cm.sort(['RA'])
 LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
 cm = cm[LOC]
 cm = cm[(cm['MK']<-2.5)]
-#cm = cm[:20]
+cm = cm[:6]
 
 #### QUERYING FROM MAST - SPOC LIGHTCURVES
 # 17/10/25 - last update
@@ -60,7 +60,13 @@ cm = cm[(cm['MK']<-2.5)]
 #LCs.header_key(key='NAXIS2')
 #LCs.lightcurves(time_bin = [0.00694,0.02083], save_fits = True, extract_field = False)
 
+PGs = Extract(data=cm, plot_key='dmag', plot_name='p_bsgs', output_format='png')#, inter=True)
+PGs.periodograms(bin_size = '10m', prew=True, nterms=3)
 
+
+
+
+'''
 time_metrics= ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
 m = TimeDomain(data = cm, measures = time_metrics)
 
@@ -90,7 +96,7 @@ f.scatter_plot(x=['MSC','MSP'], y=['PSI','e_PSI','MSS','MSD'],
           #  alpha = ['AVECROWD', 0.75, 0.85, 0.95], 
             output_format = None, inter=True)
 
-'''
+
 f.scatter_plot(x=['MK', 'TEFF','SLOGL'], y = ['logIQR','PSI','SKW'],#,'MSC','MSD','MSP'], 
             invert=['MK'],
             cbar = ['AVECROWD', 0.79, 1],  #['Tmag', 4, 14]
