@@ -5,6 +5,12 @@ tess_header_keys_p = ['TSTART','TSTOP','DATE-OBS','DATE-END','PROCVER',\
                       'DEC_OBJ','PMRA','PMDEC','PMTOTAL','INSTRUME','PXTABLE','TESSMAG']
 tess_header_keys_b = ['BJDREFI','TIMEDEL','CROWDSAP','FLFRCSAP','PDCVAR']
 
+pg_header_keys = ['OBJECT','TICID','SECTOR','RA_OBJ','DEC_OBJ','TESSMAG',
+                  'CROWDSAP','BINNING','BINSIZE']
+                  
+
+
+
 
 
 flux_units = {

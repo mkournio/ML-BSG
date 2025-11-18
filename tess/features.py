@@ -123,13 +123,12 @@ class Features(object):
                 
             i = 0
             a_range = [0.999*np.nanmin(ltab[a_key])] + sorted(a_range) + [np.nanmax(ltab[a_key])]     
-            print(a_range)
-            a_val = np.linspace(0.3, 1., len(a_range) - 1)
+            a_val = np.linspace(0.4, 1., len(a_range) - 1)
             
             while i < len(a_range)-1:
                 mask = (a_range[i] < ltab[a_key]) & (ltab[a_key] <= a_range[i+1])
                 ltab['AMARK'][mask] = a_val[i]
-                print(a_range[i],a_val[i],a_range[i+1])
+                #print(a_range[i],a_val[i],a_range[i+1])
 
                 i += 1
         

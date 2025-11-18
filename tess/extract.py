@@ -247,7 +247,7 @@ class Extract(GridTemplate):
     def periodograms(self,
                      bin_size = '10m',
                      stitched = False,
-                     fterms = 3,
+                     nterms = 3,
                      prew = True,                     
                      **kwargs):
         
@@ -271,7 +271,7 @@ class Extract(GridTemplate):
                 
                 ff = fits.open(get_fits_name(star,tic))
                 print('Extracting LS data for {} - {}'.format(star,tic))
-               
+              
                 if stitched:                    
                     # TO DO - calculate LS for stitched, 
                     # need to decide how it can be saved on the fits files                   
@@ -280,12 +280,15 @@ class Extract(GridTemplate):
                 else:
                     hdus = get_hdu_from_keys(ff[1:], BINSIZE = str(bin_size))
                     for hdu in hdus:
-                        t0, freqs, pg, rn = self.lombscargle(hdu, prew=prew, nterms=fterms)
-                        print(rn)
-                        #add new hdu LS in fits file
+                        t0, freqs, pg_tab, rn_tab = self.lombscargle(hdu, prew=prew, nterms=nterms)
+                        FitsObject.append_pg(ff, pg_tab, rn_tab, header_source = hdu.header)
                         
+                ff.close()
+                        
+
                   #  ff.writeto(get_fits_name(star,tic), overwrite=True)
-                    ff.close()
+                 # print(ff)
+                 # ff.close()
                     
         return
 

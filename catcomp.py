@@ -25,8 +25,7 @@ cm = PostProcess(xc).xmatch().append('combined'); cm.sort(['RA'])
 LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
 cm = cm[LOC]
 cm = cm[(cm['MK']<-2.5)]
-cm = cm[:6]
-
+cm = cm[:2]
 #### QUERYING FROM MAST - SPOC LIGHTCURVES
 # 17/10/25 - last update
 #r=np.where(cm['STAR']=='HD191396')[0][0]
@@ -61,55 +60,53 @@ cm = cm[:6]
 #LCs.lightcurves(time_bin = [0.00694,0.02083], save_fits = True, extract_field = False)
 
 PGs = Extract(data=cm, plot_key='dmag', plot_name='p_bsgs', output_format='png')#, inter=True)
-PGs.periodograms(bin_size = '10m', prew=True, nterms=3)
-
+PGs.periodograms(bin_size = '10m', prew=True, nterms=1)
 
 
 
 '''
+
 time_metrics= ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
 m = TimeDomain(data = cm, measures = time_metrics)
 
 #m.reset_headers(primary=True, sectors=False)
 #m.calculate()
-m.header_combine(mode = 'average', bin_size = '10m')
+#m.header_combine(mode = 'average', bin_size = '10m')
+
 
 f = Features(data = cm)
 f.cols_from_headers(time_metrics + ['MINCROWD','AVECROWD'], update_table = True)
-#print(cm[['STAR'] + ['MK', 'TEFF','SLOGL','IQR','PSI','SKW']].pprint(max_lines=-1,max_width=-1))
 
-#f.scatter_plot(x=['MSP', 'MSS'], y = ['MSD','MSC'], #,'MSC','MSD','MSP'], 
-#            invert=['MK'],
-#            cbar = ['AVECROWD', 0.79, 1],  #['Tmag', 4, 14]
-#         #   alpha = ['AVECROWD', 0.75, 0.85, 0.95],
-#            output_format = None, inter=True)
-
-f.scatter_plot(x=['MK', 'TEFF','SLOGL'], y = ['logIQR','PSI','SKW'],#,'MSC','MSD','MSP'], 
-            invert=['MK'],
-            cbar = ['AVECROWD', 0.79, 1],  #['Tmag', 4, 14]
-         #   alpha = ['AVECROWD', 0.75, 0.85, 0.95],
-            output_format = None, inter=True)
-
-f.scatter_plot(x=['MSC','MSP'], y=['PSI','e_PSI','MSS','MSD'],  
-            invert=[], 
-            cbar = ['AVECROWD', 0.8, 1.0],  #['Tmag', 4, 14]
-          #  alpha = ['AVECROWD', 0.75, 0.85, 0.95], 
-            output_format = None, inter=True)
+print_tab = cm['STAR','RA','DEC','GAL','SpC','TIC','AVECROWD',
+               'MK','JK','BR','RUWE',
+               'TEFF','e_TEFF','SLOGL',
+               'IQR','e_IQR','PSI','e_PSI','SKW','e_SKW','ZCR','e_ZCR',
+               'MSP','e_MSP','MSD','e_MSD','MSC','e_MSC','MSS','e_MSS']
+#print(ptab.pprint(max_lines=-1,max_width=-1))
+tab_to_csv(print_tab,output='ftab_10m.csv')
 
 
-f.scatter_plot(x=['MK', 'TEFF','SLOGL'], y = ['logIQR','PSI','SKW'],#,'MSC','MSD','MSP'], 
-            invert=['MK'],
-            cbar = ['AVECROWD', 0.79, 1],  #['Tmag', 4, 14]
-         #   alpha = ['AVECROWD', 0.75, 0.85, 0.95],
-            output_format = None, inter=True)
+plot_kwargs = {'invert': ['MK'], 'cbar': ['AVECROWD', 0.79, 1], 'alpha': ['AVECROWD', 0.75, 0.85, 0.95],
+               'output_format': None, 'inter': True}
 
-f.scatter_plot(x=['MSC','MSD'], y=['PSI','MSP','e_PSI','MK','e_MSP'],  
-            invert=[], 
-            cbar = ['AVECROWD', 0.8, 1.0],  #['Tmag', 4, 14]
-          #  alpha = ['AVECROWD', 0.75, 0.85, 0.95], 
-            output_format = None, inter=True)
+f.scatter_plot(x = ['MSC','MSP'], 
+               y = ['PSI','e_PSI','MSS','MSD'], 
+               **plot_kwargs)
 
+#f.scatter_plot(x = ['JK','logRUWE'], 
+#               y = ['PSI','e_PSI','MSS','MSD'], 
+#               **plot_kwargs)
+
+#f.scatter_plot(x = ['JK','logRUWE'], 
+#               y = ['MSC','MSP','MSS','MSD'], 
+#               **plot_kwargs)
+
+
+f.scatter_plot(x = ['MK', 'TEFF','SLOGL'], 
+               y = ['logIQR','ZCR','PSI','SKW'],#,'MSC','MSD','MSP'],
+               **plot_kwargs)
 '''
+
 #print(cm[('STAR','TEFF',) + metrics].pprint(max_lines=-1,max_width=-1))
 #print(cm.columns)
 

@@ -93,10 +93,10 @@ class TimeDomain(object):
                 sectors = get_sectors_from_hdulist(ff)
                 
                 if bin_size == 'raw':                    
-                    hdus = [get_hdu_from_keys(ff, SECTOR = s, BINNING = 'F') for s in sectors]
+                    hdus = [get_hdu_from_keys(ff, SECTOR = s, BINNING = 'F')[0] for s in sectors]
                 else:
-                    hdus = [get_hdu_from_keys(ff, SECTOR = s, BINSIZE = str(bin_size)) for s in sectors]
-                                              
+                    hdus = [get_hdu_from_keys(ff, SECTOR = s, BINSIZE = str(bin_size))[0] for s in sectors]
+
                 s_values = []
                 crowdsap_v = []
                 

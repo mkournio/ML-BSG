@@ -108,9 +108,9 @@ STY_LB = 	{
 		'MAD' : r'MAD', 'STD': r'$\sigma$ [mag]', 'ZCROSS' : r'$D_{0}$', 'PSI': r'$\psi^2$', 'IQR': r'IQR',
 		'ETA' : r'$\eta$', 'SKW': r'skw', 'A_V' : r'$A_{V}$', 'EDD' : r'$\Gamma_{e}$', 'KRT': r'kurt', 'ZCR': r'Zcr',
         'MSM' : r'MSM', 'MSP' : r'$\bar{{E_s}^2}$', 'MSD' : r'$\sigma_{E_s}$', 'MSC' : r'$\kappa_{E_s}$', 'MSS' : r'$m_{E_s}$',
-        'AVECROWD': r'CROWDSAP', 'MINCROWD': r'CROWDSAP', 'Tmag': r'T [mag]',
+        'AVECROWD': r'CROWDSAP', 'MINCROWD': r'CROWDSAP', 'Tmag': r'T [mag]', 'RUWE':r'RUWE',
 		'MG' : r'$M_{G}$ [mag]', 'MJ' : r'$M_{J}$ [mag]', 'MH' : r'$M_{H}$ [mag]', 'MK': r'$M_{K}$ [mag]', 
-        'JK': r'$J-K_{s}$', 'VCHAR' : r'log($\nu_{char}$ [d$^{-1}$])',
+        'JK': r'$J-K_{s}$', 'VCHAR' : r'log($\nu_{char}$ [d$^{-1}$])', 'BR': r'$B_{p}-R_{p}$',
 		'FF' : r'$f_{i}$ [d$^{-1}$]', 'A_FF' : r'$A_{i}$ [mag]', 'HF' : r'$jf$', 'FFR' : r'$f_{1}/f_{2}$', 
 		'A_FFR' : r'$A_{f_{1}}/A_{f_{2}}$', 'BETA' : r'$\beta$', 'VINF' : r'$v_{inf}$ [km s$^{-1}$]',
 		'INDFF' : r'#$f_{i}$','INDFFS' : r'#$f_{i,sec}$'}

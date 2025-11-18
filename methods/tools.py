@@ -5,6 +5,7 @@ import numpy as np
 import lightkurve as lk
 import warnings
 import os
+import astropy.units as u
 
 def check_header_key(hdu,key,val):
     if key in hdu.header:
@@ -16,7 +17,7 @@ def check_header_key(hdu,key,val):
 def get_hdu_from_keys(hdulist,**kwargs):
     
     if kwargs == {}:
-        return None
+        return []
     
     hdu=[]
     for i in hdulist:
@@ -24,19 +25,12 @@ def get_hdu_from_keys(hdulist,**kwargs):
         f = 0
         hdr = i.header
         for key, value in kwargs.items():
-            if key in hdr and hdr[key] == value:
-                f += 1
+            if (key in hdr) and (hdr[key] == value):
+                    f +=1
         if f == len(kwargs):
-            hdu.append(i)
+            hdu.append(i)          
             
-    if len(hdu) == 0:
-        
-        return None
-    else:
-       # if len(hdu) > 1:
-       #     warnings.warn('More than 1 headers found; returned the first.')
-            
-        return hdu  
+    return hdu
       
 def get_sectors_from_hdulist(hdulist,**kwargs):
     
@@ -153,13 +147,36 @@ class FitsObject(object):
 
        return
    
-      def add_ls(self,
-                 ls,
-                 header_source = None,
-                 **kwargs):
+      @staticmethod   
+      def append_pg(hdu_list,
+                    pg_tab,
+                    rn_tab = [],
+                    header_source = None,
+                    **kwargs):
           
+          if len(pg_tab) < 2:
+              return
+
+          cols = []
+          cols.append(fits.Column(name='freq',format="E",array=pg_tab[0]))
+          for i in range(1,len(pg_tab)):
+              cols.append(fits.Column(name='p_{}'.format(i-1),format="E",array=pg_tab[i]))
+              
+          coldefs = fits.ColDefs(cols)
+          hdu = fits.BinTableHDU.from_columns(coldefs)
           
-       return
+          if header_source is not None:
+              hdu.header = FitsObject.create_header_from_selection(hdu.header, header_source, keys = pg_header_keys)
+              
+          for i in range(len(rn_tab)):              
+              for e, rnk in enumerate(['WHITE','RED','CHART','GAMMA']):
+                  hdu.header["{}_{}".format(rnk,i)] = str(rn_tab[i][e])
+              
+          print(hdu.header)
+
+          hdu_list.append(hdu)
+          
+          return
    
       def add_field_from_tpf(self,tpf_file,timestamp = 0): 
        
@@ -200,6 +217,18 @@ class FitsObject(object):
          pass    
             
        return hdr
+   
+      @staticmethod   
+      def create_header_from_selection(hdr,source_hdr,keys):
+          
+       for key in keys:
+           
+           if key in source_hdr:
+               hdr[key] = source_hdr[key]        
+          
+       return hdr
+   
+    
       
       def close(self,overwrite=True):
       
