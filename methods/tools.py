@@ -6,6 +6,8 @@ import lightkurve as lk
 import warnings
 import os
 import astropy.units as u
+from astropy.io import fits
+
 
 def check_header_key(hdu,key,val):
     if key in hdu.header:
@@ -76,10 +78,7 @@ def get_fits_name(star,tic):
     
     return os.path.join(path_to_output_fits,'{}_{}.fits'.format(star,tic))
 
-
 class FitsObject(object):
-
-      from astropy.io import fits
 
       def __init__(self,fits_file = None,**kwargs):
            
@@ -148,33 +147,68 @@ class FitsObject(object):
        return
    
       @staticmethod   
-      def append_pg(hdu_list,
-                    pg_tab,
-                    rn_tab = [],
-                    header_source = None,
-                    **kwargs):
+      def append_lombscargle(hdu_list,
+                             pg_tab,
+                             rn_tab = [],
+                             header_source = None,
+                             **kwargs):
           
           if len(pg_tab) < 2:
               return
 
           cols = []
-          cols.append(fits.Column(name='freq',format="E",array=pg_tab[0]))
+          cols.append(fits.Column(name='frequency',format="E",unit='1/d',array=pg_tab[0]))
           for i in range(1,len(pg_tab)):
-              cols.append(fits.Column(name='p_{}'.format(i-1),format="E",array=pg_tab[i]))
+              cols.append(fits.Column(name='p_{}'.format(i-1),format="E",unit='mag',array=pg_tab[i]))
               
           coldefs = fits.ColDefs(cols)
           hdu = fits.BinTableHDU.from_columns(coldefs)
           
+          hdu.header['HDUTYPE'] = 'LOMBSCARGLE'
           if header_source is not None:
               hdu.header = FitsObject.create_header_from_selection(hdu.header, header_source, keys = pg_header_keys)
               
           for i in range(len(rn_tab)):              
-              for e, rnk in enumerate(['WHITE','RED','CHART','GAMMA']):
-                  hdu.header["{}_{}".format(rnk,i)] = str(rn_tab[i][e])
-              
-          print(hdu.header)
-
+              for e, rnk in enumerate(['WHITE','RED','TAU','GAMMA']):
+                  v = rn_tab[i][e]; e_v = rn_tab[i][e+4]
+                  if np.isnan(v): v = None; e_v=None
+                  hdu.header["{}_{}".format(rnk,i)] = (v, e_v)
+                  
+          #print(hdu.header)
           hdu_list.append(hdu)
+          
+          return
+      
+      @staticmethod 
+      def append_frequencies(hdu_list,
+                             frequencies,
+                             t0,
+                             header_source = None,
+                             **kwargs):
+          
+          nterms = int(len(frequencies[0][3:])/2)
+          tr_freqs = list(map(list, zip(*frequencies)))
+
+          cols = []
+          cols.append(fits.Column(name='frequency',format="E", unit='1/d',array=tr_freqs[0]))
+          cols.append(fits.Column(name='snr',format="E",array=tr_freqs[1]))
+          cols.append(fits.Column(name='offset',format="E",unit='mag',array=tr_freqs[2]))
+  
+          t = 0
+          while t < nterms:
+              cols.append(fits.Column(name='amplitude_{}'.format(t),format="E",unit='mag',array=tr_freqs[t+3]))
+              cols.append(fits.Column(name='phase_{}'.format(t),format="E",unit='rad',array=tr_freqs[t+3+nterms]))
+              t += 1
+          
+          coldefs = fits.ColDefs(cols)
+          hdu = fits.BinTableHDU.from_columns(coldefs)
+          
+          hdu.header['HDUTYPE'] = 'FREQUENCIES'
+          if header_source is not None:
+              hdu.header = FitsObject.create_header_from_selection(hdu.header, header_source, keys = pg_header_keys)
+ 
+          hdu_list.append(hdu)
+          #print(hdu.data)          
           
           return
    
@@ -240,7 +274,37 @@ class FitsObject(object):
        return 
      
 
-
+class FitsList(object):
+    
+    def __init__(self, tab):
+        
+        self.tab = tab
+        
+        return
+    
+    def remove_hdu(self, hdutypes = []):
+        
+        if len(hdutypes) < 1:
+            
+            return
+        
+        ltab = self.tab.copy()
+        fits_list = os.listdir(path_to_output_fits)        
+        
+        for star, tic in zip(ltab['STAR'],ltab['TIC']):
+            
+            filename = [f for f in fits_list if star in f]            
+            if len(filename) > 0 :
+                
+                ff = fits.open(os.path.join(path_to_output_fits,filename[0]))
+                new_list = [x for x in ff if (('HDUTYPE' not in x.header) or (x.header['HDUTYPE'] not in hdutypes))]
+                ff = fits.HDUList(new_list)
+                
+                ff.writeto(os.path.join(path_to_output_fits,filename[0]), overwrite=True)
+                ff.close()
+                
+        return
+                    
 
 '''
 

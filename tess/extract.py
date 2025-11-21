@@ -278,18 +278,15 @@ class Extract(GridTemplate):
                     pass
                 
                 else:
-                    hdus = get_hdu_from_keys(ff[1:], BINSIZE = str(bin_size))
+                    hdus = get_hdu_from_keys(ff[1:], TTYPE1 = 'time', BINSIZE = str(bin_size))
                     for hdu in hdus:
-                        t0, freqs, pg_tab, rn_tab = self.lombscargle(hdu, prew=prew, nterms=nterms)
-                        FitsObject.append_pg(ff, pg_tab, rn_tab, header_source = hdu.header)
+                        t0, freq_tab, pg_tab, rn_tab = self.lombscargle(hdu, prew=prew, nterms=nterms)
+                        FitsObject.append_lombscargle(ff, pg_tab, rn_tab, header_source = hdu.header)
+                        FitsObject.append_frequencies(ff, freq_tab, t0, header_source = hdu.header)
                         
+                ff.writeto(get_fits_name(star,tic), overwrite=True)
                 ff.close()
-                        
-
-                  #  ff.writeto(get_fits_name(star,tic), overwrite=True)
-                 # print(ff)
-                 # ff.close()
-                    
+                
         return
 
     @staticmethod
@@ -332,7 +329,7 @@ class Extract(GridTemplate):
         theta  = pg.model_params(frequency=pg.frequency_at_max_power)
         
         sn_val = max_freq_sn(pg, sn_window, freq_mask)        
-        fit_model = [[pg.frequency_at_max_power.value,sn_val.value,theta]]        
+        fit_model = [[pg.frequency_at_max_power.value,sn_val.value,*theta]]        
         #sinf=sinusoidal(m_freqs[-1], m_offsets[-1], m_amplitudes[-1], m_phases[-1])
         #siny = sinf(lc.time.value)
         
@@ -356,7 +353,7 @@ class Extract(GridTemplate):
                 
                 model.flux = model.flux + pg.model(time=prw_res.time, frequency=pg.frequency_at_max_power).flux                
                 theta  = pg.model_params(frequency=pg.frequency_at_max_power)  
-                fit_model.append([pg.frequency_at_max_power.value,sn_val.value,theta])   
+                fit_model.append([pg.frequency_at_max_power.value,sn_val.value,*theta])   
                 #sinf=sinusoidal(m_freqs[-1], m_offsets[-1], m_amplitudes[-1], m_phases[-1])
                 #siny += sinf(lc.time.value)              
 

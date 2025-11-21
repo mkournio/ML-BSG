@@ -59,8 +59,10 @@ cm = cm[:2]
 #LCs.header_key(key='NAXIS2')
 #LCs.lightcurves(time_bin = [0.00694,0.02083], save_fits = True, extract_field = False)
 
-PGs = Extract(data=cm, plot_key='dmag', plot_name='p_bsgs', output_format='png')#, inter=True)
-PGs.periodograms(bin_size = '10m', prew=True, nterms=1)
+fl = FitsList(cm)
+fl.remove_hdu(hdutypes=['FREQUENCIES','LOMBSCARGLE'])
+#PGs = Extract(data=cm, plot_key='dmag', plot_name='p_bsgs', output_format='png')#, inter=True)
+#PGs.periodograms(bin_size = '10m', prew=False, nterms=3)
 
 
 
