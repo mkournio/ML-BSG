@@ -27,3 +27,7 @@ test/
 tasoc.py
 
 log_vis
+
+*.ipynb
+
+input_sample

@@ -51,6 +51,13 @@ class PostProcess(Table):
         def append(self,cat='combined'):
                         app_tab = self.copy()
                         return app_tab
+                    
+        def write_to_csv(self,filename='sample.dat'):
+                        tab = self.copy()
+                        tab.write(filename, format='ascii', delimiter=',', overwrite=True)
+                        return tab
+
+
                          
 
 class PreProcess(object):

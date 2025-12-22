@@ -9,7 +9,7 @@ from astropy.io import fits
 from astropy import units as u
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
-import warnings
+import warnings; warnings.filterwarnings("ignore")
 from methods.tools import *
 
 def max_freq_sn(pg, sn_window, freq_mask):
@@ -248,7 +248,8 @@ class Extract(GridTemplate):
                      bin_size = '10m',
                      stitched = False,
                      nterms = 3,
-                     prew = True,                     
+                     prew = True,
+                     maximum_frequency = None,                     
                      **kwargs):
         
         if bin_size not in ['raw','10m','30m']:
@@ -265,7 +266,7 @@ class Extract(GridTemplate):
         
         for star, tic in zip(stars,tics):
             
-            fits_files = [j for j in os.listdir(path_to_output_fits) if (star in j)]
+            fits_files = [j for j in os.listdir(path_to_output_fits) if ((star in j) and (str(tic) in j))]
             
             if len(fits_files) > 0:
                 
@@ -280,7 +281,7 @@ class Extract(GridTemplate):
                 else:
                     hdus = get_hdu_from_keys(ff[1:], TTYPE1 = 'time', BINSIZE = str(bin_size))
                     for hdu in hdus:
-                        t0, freq_tab, pg_tab, rn_tab = self.lombscargle(hdu, prew=prew, nterms=nterms)
+                        t0, freq_tab, pg_tab, rn_tab = self.lombscargle(hdu, prew=prew, nterms=nterms, maximum_frequency = maximum_frequency)
                         FitsObject.append_lombscargle(ff, pg_tab, rn_tab, header_source = hdu.header)
                         FitsObject.append_frequencies(ff, freq_tab, t0, header_source = hdu.header)
                         
@@ -294,6 +295,7 @@ class Extract(GridTemplate):
                   prew = False,
                   flux_key = 'dmag', 
                   nterms = 3,
+                  maximum_frequency=None,
                   red_noise = True,
                   plot_lc = False,
                   plot_ls = False,
@@ -322,7 +324,7 @@ class Extract(GridTemplate):
         freq_mask = kwargs.pop('freq_mask',1/27.)
             
         lc_ini = lc.copy()
-        pg = lc_ini.to_periodogram(ls_method=ls_method,nterms=nterms)
+        pg = lc_ini.to_periodogram(ls_method=ls_method,nterms=nterms,maximum_frequency=maximum_frequency)
         
         pg_tab = [pg.frequency.value,pg.power.value]
         model = pg.model(time=lc_ini.time,frequency=pg.frequency_at_max_power)        
@@ -346,7 +348,7 @@ class Extract(GridTemplate):
                 #fig = plt.figure()
                 #plt.plot(pg.frequency.value,np.log10(pg.power.value))
                 #fig.show()                
-                pg = prw_res.to_periodogram(ls_method=ls_method,nterms=nterms)                
+                pg = prw_res.to_periodogram(ls_method=ls_method,nterms=nterms,maximum_frequency=maximum_frequency)                
                 sn_val = max_freq_sn(pg, sn_window, freq_mask)
                 if sn_val < prw_sn:
                     break
@@ -368,13 +370,18 @@ class Extract(GridTemplate):
                 rn_model.append(np.hstack([popt,perr]))
                 
         if plot_lc:
+            plt.rcParams.update(PLOT_PARAMS['lc'])
+            
             if 'ax_lc' in kwargs:
                 ax_lc = kwargs['ax_lc']
             else:
                 _, ax_lc = plt.subplots()
             
-            ax_lc.plot(lc.time.value,lc.flux.value)
-            ax_lc.plot(model.time.value,model.flux.value,'r')
+            ax_lc.plot(lc.time.value,lc.flux.value,'b',label='observed')
+            ax_lc.plot(model.time.value,model.flux.value,'r',label='model')
+            ax_lc.set_xlabel(PLOT_XLABEL['lc'])
+            ax_lc.set_ylabel(PLOT_YLABEL['dmag'])
+            ax_lc.legend()
             #ax_lc.plot(lc.time.value,siny,'g--')
                 
         if plot_ls:
@@ -394,7 +401,9 @@ class Extract(GridTemplate):
                     
             ax_ls.set_xscale('log')
             ax_ls.set_xlim([0.05,x[-1]])                
-            ax_ls.set_ylim([-6.5,None])     
+            ax_ls.set_ylim([-6.5,None])
+            ax_ls.set_xlabel(PLOT_XLABEL['ls'])
+            ax_ls.set_ylabel(PLOT_YLABEL['ls'])
             
         return lc.time[0].value, fit_model, pg_tab, rn_model
     
@@ -403,7 +412,7 @@ class Extract(GridTemplate):
                  y,
                  fit_scale = 'log',
                  low_lim = 2/27., 
-                 up_lim = np.inf,
+                 up_lim = 30.,
                  **kwargs):       
         
         nan_ind = np.isnan(y)

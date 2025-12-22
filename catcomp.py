@@ -11,13 +11,14 @@ from constants import *
 import pandas as pd
 from tess import *
 import numpy as np
+from astropy.io import ascii
 
-
-xc = PreProcess(args).compile()
-GDW =  [(not any(y in x for y in ('III','V','O9','A0','A1','A2','A3','ON','OC'))) or ('LBV' in x) for x in xc['SpC']]
-xc = xc[GDW]
-
-cm = PostProcess(xc).xmatch().append('combined'); cm.sort(['RA'])
+#xc = PreProcess(args).compile()
+#GDW =  [(not any(y in x for y in ('III','V','O9','A0','A1','A2','A3','ON','OC'))) or ('LBV' in x) for x in xc['SpC']]
+#xc = xc[GDW]
+#cm = PostProcess(xc).xmatch().append('combined').write_to_csv('input_sample')
+cm = ascii.read('input_sample')
+cm.sort(['RA'])
 
 # FILTERING THE SAMPLE
 #EMS = [('LBV' in x) or ('B[e]SG' in x) for x in cm['SpC']]
@@ -25,7 +26,7 @@ cm = PostProcess(xc).xmatch().append('combined'); cm.sort(['RA'])
 LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
 cm = cm[LOC]
 cm = cm[(cm['MK']<-2.5)]
-cm = cm[:2]
+cm = cm[:3]
 #### QUERYING FROM MAST - SPOC LIGHTCURVES
 # 17/10/25 - last update
 #r=np.where(cm['STAR']=='HD191396')[0][0]
@@ -51,7 +52,7 @@ cm = cm[:2]
 #print(cm['STAR','TEFF','SLOGL'].pprint(max_lines=-1,max_width=-1))
 
 #18/10 stop: MASSJ05045052-7038229: extracted Sector s0027 of TIC 31006657 (SPOC)
-#r=np.where(cm['STAR']=='HD96060')[0][0]
+#r=np.where(cm['STAR']=='HD269927')[0][0]
 #print(r)
 #cm = cm[r:]
 # LIGHTVURVE EXTRACTION - FITS CREATION
@@ -59,16 +60,17 @@ cm = cm[:2]
 #LCs.header_key(key='NAXIS2')
 #LCs.lightcurves(time_bin = [0.00694,0.02083], save_fits = True, extract_field = False)
 
-fl = FitsList(cm)
-fl.remove_hdu(hdutypes=['FREQUENCIES','LOMBSCARGLE'])
+#fl = FitsList(cm).remove_hdu(hdutypes=['FREQUENCIES','LOMBSCARGLE'])
 #PGs = Extract(data=cm, plot_key='dmag', plot_name='p_bsgs', output_format='png')#, inter=True)
-#PGs.periodograms(bin_size = '10m', prew=False, nterms=3)
+#PGs.periodograms(bin_size = '10m', prew=True, nterms=3)
 
 
 
-'''
 
 time_metrics= ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
+freq_metrics = ['F0','F1','F2','A0','A1','A2',
+                'R10','R20','R11','R21','R12','R22']
+
 m = TimeDomain(data = cm, measures = time_metrics)
 
 #m.reset_headers(primary=True, sectors=False)
@@ -77,17 +79,19 @@ m = TimeDomain(data = cm, measures = time_metrics)
 
 
 f = Features(data = cm)
-f.cols_from_headers(time_metrics + ['MINCROWD','AVECROWD'], update_table = True)
+f.get_from_primary_headers(time_metrics + ['MINCROWD','AVECROWD'], update_table = True)
+f.get_from_sectors(freq_metrics)
 
 print_tab = cm['STAR','RA','DEC','GAL','SpC','TIC','AVECROWD',
                'MK','JK','BR','RUWE',
                'TEFF','e_TEFF','SLOGL',
                'IQR','e_IQR','PSI','e_PSI','SKW','e_SKW','ZCR','e_ZCR',
                'MSP','e_MSP','MSD','e_MSD','MSC','e_MSC','MSS','e_MSS']
+print(print_tab)
 #print(ptab.pprint(max_lines=-1,max_width=-1))
-tab_to_csv(print_tab,output='ftab_10m.csv')
+#tab_to_csv(print_tab,output='ftab_10m.csv')
 
-
+'''
 plot_kwargs = {'invert': ['MK'], 'cbar': ['AVECROWD', 0.79, 1], 'alpha': ['AVECROWD', 0.75, 0.85, 0.95],
                'output_format': None, 'inter': True}
 
@@ -107,8 +111,8 @@ f.scatter_plot(x = ['MSC','MSP'],
 f.scatter_plot(x = ['MK', 'TEFF','SLOGL'], 
                y = ['logIQR','ZCR','PSI','SKW'],#,'MSC','MSD','MSP'],
                **plot_kwargs)
-'''
 
+'''
 #print(cm[('STAR','TEFF',) + metrics].pprint(max_lines=-1,max_width=-1))
 #print(cm.columns)
 

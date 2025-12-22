@@ -27,7 +27,7 @@ class Features(object):
     def _validate(self):
         pass
     
-    def cols_from_headers(self, hdr_keys, update_table = True):         
+    def get_from_primary_headers(self, hdr_keys, update_table = True):         
       
         if len(hdr_keys) == 0:
             return
@@ -76,7 +76,63 @@ class Features(object):
         
         else:           
             
-            return Table(k_array,names=columns_names)         
+            return Table(k_array,names=columns_names)  
+        
+    def get_from_sectors(self, keys, hdu_type = 'frequencies', bin_size = '10m'):
+       
+        if len(keys) == 0:
+            return
+        
+        if bin_size == '10m':
+            bin_size = 0.00694
+        elif bin_size == '30m':
+            bin_size = 0.02083
+            
+        stars = self.data['STAR']
+        #array = np.full((len(stars),2*len(hdr_keys)), np.nan)
+        
+        for star_index, star in enumerate(stars):
+            
+            filename = [f for f in os.listdir(path_to_output_fits) if star in f]
+            if len(filename) > 0 :
+                
+                ff = fits.open(os.path.join(path_to_output_fits,filename[0])) 
+                
+                sectors = get_sectors_from_hdulist(ff)
+                hdus = [get_hdu_from_keys(ff, SECTOR = s, HDUTYPE = hdu_type.upper(), BINSIZE = str(bin_size))[0] for s in sectors]
+                
+                for hdu, sect in zip(hdus,sectors):
+                    
+                    sect_values = np.full(len(keys), np.nan) 
+                    for i, k in enumerate(keys):
+                        if 'F' in k:
+                            try:
+                                sect_values[i]=hdu.data[int(k[1:])]['frequency']
+                            except:
+                                pass
+                        elif 'A' in k:
+                            try:
+                                sect_values[i]=hdu.data[int(k[1:])]['amplitude_0']  
+                            except:
+                                pass
+                        elif 'R' in k:
+                            try:
+                                f = hdu.data[int(k[2:])]                                
+                                sect_values[i]=f['amplitude_%s' % k[1]] / f['amplitude_0']
+                            except:
+                                pass
+                    
+                    print(star,sect,sect_values)
+                    
+                  #  sect_values = np.full(len(self.measures), np.nan)   
+                #for hdu, sect in zip(hdus,sectors):
+                    
+        return
+
+     
+        
+        
+        
             
     def scatter_plot(self, x, y, mode = 'matrix', invert = [], cbar = None, alpha = None, hold = False, **kwargs):
         

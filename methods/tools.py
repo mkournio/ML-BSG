@@ -204,6 +204,7 @@ class FitsObject(object):
           hdu = fits.BinTableHDU.from_columns(coldefs)
           
           hdu.header['HDUTYPE'] = 'FREQUENCIES'
+          hdu.header['TSTART'] = t0
           if header_source is not None:
               hdu.header = FitsObject.create_header_from_selection(hdu.header, header_source, keys = pg_header_keys)
  
