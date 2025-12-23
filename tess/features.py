@@ -63,25 +63,27 @@ class Features(object):
 
                 ff.close()
                 
-        k_array = list(map(list, zip(*array))) 
+        t_array = list(map(list, zip(*array))) 
         
         hdr_keys_err = ['e_'+x for x in hdr_keys]
         columns_names = np.concatenate((hdr_keys,hdr_keys_err), axis=0)
         
         if  update_table :
             
-            self.data.add_columns(k_array,names=columns_names)
+            self.data.add_columns(t_array,names=columns_names)
             
             return 
         
         else:           
             
-            return Table(k_array,names=columns_names)  
+            return Table(t_array,names=columns_names)  
         
-    def get_from_sectors(self, keys, hdu_type = 'frequencies', bin_size = '10m'):
+    def get_from_sectors(self, time_keys = [], freq_keys = [], rn_keys = [], bin_size = '10m', stitch_input = False):
        
-        if len(keys) == 0:
+        if len(time_keys) == 0 and len(freq_keys) == 0 and len(rn_keys) == 0:
             return
+        
+        column_names = np.concatenate((['SECT'],time_keys,freq_keys,rn_keys), axis=0)
         
         if bin_size == '10m':
             bin_size = 0.00694
@@ -89,50 +91,83 @@ class Features(object):
             bin_size = 0.02083
             
         stars = self.data['STAR']
-        #array = np.full((len(stars),2*len(hdr_keys)), np.nan)
+        input_cols = np.array(list(self.data.columns))
         
+        array = []        
         for star_index, star in enumerate(stars):
-            
+            print(self.data[star_index])
+            input_row = np.array(list(self.data[star_index]))
+
             filename = [f for f in os.listdir(path_to_output_fits) if star in f]
             if len(filename) > 0 :
                 
-                ff = fits.open(os.path.join(path_to_output_fits,filename[0])) 
-                
+                ff = fits.open(os.path.join(path_to_output_fits,filename[0]))                
                 sectors = get_sectors_from_hdulist(ff)
-                hdus = [get_hdu_from_keys(ff, SECTOR = s, HDUTYPE = hdu_type.upper(), BINSIZE = str(bin_size))[0] for s in sectors]
                 
-                for hdu, sect in zip(hdus,sectors):
+                for s in sectors:
                     
-                    sect_values = np.full(len(keys), np.nan) 
-                    for i, k in enumerate(keys):
-                        if 'F' in k:
-                            try:
-                                sect_values[i]=hdu.data[int(k[1:])]['frequency']
-                            except:
-                                pass
-                        elif 'A' in k:
-                            try:
-                                sect_values[i]=hdu.data[int(k[1:])]['amplitude_0']  
-                            except:
-                                pass
-                        elif 'R' in k:
-                            try:
-                                f = hdu.data[int(k[2:])]                                
-                                sect_values[i]=f['amplitude_%s' % k[1]] / f['amplitude_0']
-                            except:
-                                pass
+                    t_values = np.full(len(time_keys), np.nan)
+                    f_values = np.full(len(freq_keys), np.nan)
+                    r_values = np.full(len(rn_keys), np.nan)
                     
-                    print(star,sect,sect_values)
+                    if len(time_keys) != 0:
+                        
+                        hdu = get_hdu_from_keys(ff, SECTOR = s, TTYPE2 = 'flux', BINSIZE = str(bin_size))[0] 
+                        hdr = hdu.header
+                        
+                        for k_index, k in enumerate(time_keys):                            
+                            if k in hdr:
+                                t_values[k_index] = hdr[k]                             
+                            
+                    if len(freq_keys) != 0:
+                        
+                        hdu = get_hdu_from_keys(ff, SECTOR = s, HDUTYPE = 'FREQUENCIES', BINSIZE = str(bin_size))[0]
+                        
+                        for k_index, k in enumerate(freq_keys):
+                            if 'F' in k:
+                                try:
+                                    f_values[k_index]=hdu.data[int(k[1:])]['frequency']
+                                except:
+                                    pass
+                            elif 'SNR' in k:
+                                try:
+                                    f_values[k_index]=hdu.data[int(k[3:])]['snr']
+                                except:
+                                    pass
+                            elif 'A' in k:
+                                try:
+                                    f_values[k_index]=hdu.data[int(k[1:])]['amplitude_0']  
+                                except:
+                                    pass
+                            elif 'R' in k:
+                                try:
+                                    f = hdu.data[int(k[2:])]                                
+                                    f_values[k_index]=f['amplitude_%s' % k[1]] / f['amplitude_0']
+                                except:
+                                    pass  
+                                
+                    if len(rn_keys) != 0:
+                        
+                        hdu = get_hdu_from_keys(ff, SECTOR = s, HDUTYPE = 'LOMBSCARGLE', BINSIZE = str(bin_size))[0]
+                        hdr = hdu.header
+                        
+                        for k_index, k in enumerate(rn_keys):                            
+                            if k in hdr:
+                                r_values[k_index] = hdr[k]
+                                
+                    sect_values = np.concatenate(([str(s)],t_values,f_values,r_values), axis=0)
+                    if stitch_input:
+                        sect_values = np.concatenate((input_row,sect_values), axis=0)
+                    array.append(sect_values)
                     
-                  #  sect_values = np.full(len(self.measures), np.nan)   
-                #for hdu, sect in zip(hdus,sectors):
-                    
-        return
-
-     
+                ff.close()
+                
+        t_array = list(map(list, zip(*array)))
         
-        
-        
+        if stitch_input:
+            column_names = np.concatenate((input_cols,column_names),axis=0)
+                    
+        return Table(t_array,names=column_names) 
             
     def scatter_plot(self, x, y, mode = 'matrix', invert = [], cbar = None, alpha = None, hold = False, **kwargs):
         

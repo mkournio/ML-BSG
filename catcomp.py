@@ -65,11 +65,11 @@ cm = cm[:3]
 #PGs.periodograms(bin_size = '10m', prew=True, nterms=3)
 
 
-
-
-time_metrics= ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
-freq_metrics = ['F0','F1','F2','A0','A1','A2',
+time_metrics = ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
+freq_metrics = ['F0','F1','F2','SNR0','A0','A1','A2',
                 'R10','R20','R11','R21','R12','R22']
+rn_metrics   = ['WHITE_0','RED_0','TAU_0','GAMMA_0',
+                'WHITE_1','RED_1','TAU_1','GAMMA_1']
 
 m = TimeDomain(data = cm, measures = time_metrics)
 
@@ -77,17 +77,21 @@ m = TimeDomain(data = cm, measures = time_metrics)
 #m.calculate()
 #m.header_combine(mode = 'average', bin_size = '10m')
 
-
 f = Features(data = cm)
-f.get_from_primary_headers(time_metrics + ['MINCROWD','AVECROWD'], update_table = True)
-f.get_from_sectors(freq_metrics)
 
-print_tab = cm['STAR','RA','DEC','GAL','SpC','TIC','AVECROWD',
-               'MK','JK','BR','RUWE',
-               'TEFF','e_TEFF','SLOGL',
-               'IQR','e_IQR','PSI','e_PSI','SKW','e_SKW','ZCR','e_ZCR',
-               'MSP','e_MSP','MSD','e_MSD','MSC','e_MSC','MSS','e_MSS']
-print(print_tab)
+
+#TO DO : CONVERT MASKED INPUT DATA TO NANS NOT ZEROS
+
+#f.get_from_primary_headers(time_metrics + ['MINCROWD','AVECROWD'], update_table = False)
+feats = f.get_from_sectors(time_keys=time_metrics, freq_keys = freq_metrics, rn_keys = rn_metrics, stitch_input=True)
+
+print(feats)
+#print_tab = cm['STAR','RA','DEC','GAL','SpC','TIC','AVECROWD',
+#               'MK','JK','BR','RUWE',
+ #              'TEFF','e_TEFF','SLOGL',
+  #             'IQR','e_IQR','PSI','e_PSI','SKW','e_SKW','ZCR','e_ZCR',
+   #            'MSP','e_MSP','MSD','e_MSD','MSC','e_MSC','MSS','e_MSS']
+#print(print_tab)
 #print(ptab.pprint(max_lines=-1,max_width=-1))
 #tab_to_csv(print_tab,output='ftab_10m.csv')
 
