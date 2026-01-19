@@ -301,6 +301,23 @@ class Extract(GridTemplate):
                   plot_ls = False,
                   **kwargs):
         
+        def _model_params(mod_pg, mod_freq=None):
+            
+            if mod_freq == None:
+                mod_freq = mod_pg.frequency_at_max_power
+                
+            p = mod_pg._LS_object.model_parameters(frequency=mod_freq)
+            if hasattr(p,'value'): 
+                p = p.value
+       
+            theta = np.full(len(p),np.nan)
+            theta[0] = p[0]
+            for i in range(1,len(p),2):
+                theta[i] = np.sqrt((p[i]**2)+(p[i+1]**2))
+                theta[i+1] = np.arctan2(p[i+1],p[i])
+                
+            return theta   
+        
         lc = f.copy()
         
         if isinstance(lc, lk.LightCurve):
@@ -327,13 +344,14 @@ class Extract(GridTemplate):
         pg = lc_ini.to_periodogram(ls_method=ls_method,nterms=nterms,maximum_frequency=maximum_frequency)
         
         pg_tab = [pg.frequency.value,pg.power.value]
-        model = pg.model(time=lc_ini.time,frequency=pg.frequency_at_max_power)        
-        theta  = pg.model_params(frequency=pg.frequency_at_max_power)
+        model = pg.model(time=lc_ini.time,frequency=pg.frequency_at_max_power)  
+        theta = _model_params(pg)
         
-        sn_val = max_freq_sn(pg, sn_window, freq_mask)        
+        sn_val = max_freq_sn(pg, sn_window, freq_mask)   
+
         fit_model = [[pg.frequency_at_max_power.value,sn_val.value,*theta]]        
-        #sinf=sinusoidal(m_freqs[-1], m_offsets[-1], m_amplitudes[-1], m_phases[-1])
-        #siny = sinf(lc.time.value)
+           #sinf=sinusoidal(m_freqs[-1], m_offsets[-1], m_amplitudes[-1], m_phases[-1])
+           #siny = sinf(lc.time.value)
         
         if prew:            
             prw_sn = kwargs.pop('prw_sn',4.)
@@ -353,8 +371,8 @@ class Extract(GridTemplate):
                 if sn_val < prw_sn:
                     break
                 
-                model.flux = model.flux + pg.model(time=prw_res.time, frequency=pg.frequency_at_max_power).flux                
-                theta  = pg.model_params(frequency=pg.frequency_at_max_power)  
+                model.flux = model.flux + pg.model(time=prw_res.time, frequency=pg.frequency_at_max_power).flux    
+                theta = _model_params(pg)
                 fit_model.append([pg.frequency_at_max_power.value,sn_val.value,*theta])   
                 #sinf=sinusoidal(m_freqs[-1], m_offsets[-1], m_amplitudes[-1], m_phases[-1])
                 #siny += sinf(lc.time.value)              
