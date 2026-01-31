@@ -326,6 +326,69 @@ class Extract(GridTemplate):
                 ff.close()
                 
         return
+    
+    @staticmethod 
+    def from_tesscut(
+            f,   
+            mask = None,
+            thres_ape = 0.15,
+            thres_bkg = 1e-4,
+            pca = 2,
+            lc_bin = None,
+            lc_fit_deg = 2,
+            gaia_overlay = False,  
+            ax_tpf = None,
+            ax_lc = None,
+            save_output = False,
+            **kwargs): 
+     
+        tpf = lk.TessTargetPixelFile(f)
+        bkg_mask = ~tpf.create_threshold_mask(thres_bkg, reference_pixel=None)
+        bkg_lc = tpf.to_lightcurve(aperture_mask=bkg_mask).remove_nans()
+        
+        g_size = kwargs.pop('gaia_size',64)        
+        #G = Gaia(tpf,ra,dec,cat='Gaia3')
+        mask = getmask(tpf,thres=thres_ape)
+        #save_mask(mask,self.EXTLCpath+'/%s_%s_MASK' % (star,tpf.sector))
+        #_, min_diff_FFI = G.update_mask(min_thres = 5, check_mask = mask,
+        #                                ref_p = [tpf.row, tpf.column], update = False)
+        
+        if ax_tpf == None:
+            _, ax_tpf = plt.subplots()            
+        if ax_lc == None:
+            _, ax_lc = plt.subplots()
+            
+        tpf.plot(ax=ax_tpf,aperture_mask=mask,mask_color='#FD110D',show_colorbar=False,title='')
+        
+    #    if gaia_overlay:
+    #        gaia_sizes = g_size / 2**G.RPdiff
+            #ax_tpf.scatter(G.RA_pix,G.DE_pix,s=gaia_sizes, marker='.', c='c')
+    #        if G.gaia_ind != None:
+     #           ax_tpf.scatter(G.RA_pix[G.gaia_ind], G.DE_pix[G.gaia_ind], s=GAIA_UPMARK, marker='x', color='c', linewidths=2)
+                
+      #  ax_tpf.text(0.05,0.90,'%s' % thmask,color='c',size=12,transform=ax_tpf.transAxes)
+      #  ax_tpf.set_ylabel('%s (%s)' % (star,sect), fontsize=16); ax_tpf.set_xlabel('')
+        ax_tpf.set_xlim(tpf.column,tpf.column+tpf.shape[2])
+        ax_tpf.set_ylim(tpf.row,tpf.row+tpf.shape[1])
+        
+        lcr = tpf.to_lightcurve(aperture_mask=mask).remove_nans()        
+        lcc = lccor(tpf, mask, bkg_mask, pca)
+
+        if isinstance(lc_bin,float):
+            lcc = lcc.bin(time_bin_size = lc_bin)
+        if isinstance(lc_fit_deg,int):
+            lcc = normalize(lcc,flux_key ="flux")[0]
+
+        ax_lc.plot(lcc.time.value,lcc.dmag.value,'.')
+        ax_lc.invert_yaxis()
+        
+        if isinstance(save_output,str):
+            ax_lc.savefig(save_output + '_lc_ffi.png')
+          #  save_three_col(x_n,dm,e_dm,save_output+'_lc_ffi.txt')   
+            
+        tpf.hdu.close()
+        
+        return
 
     @staticmethod
     def lombscargle(
@@ -568,7 +631,7 @@ class Extract(GridTemplate):
         params.add('nterms',nterms,vary=False)
         params.add('nmod',step,vary=False)
         save_rn=[]
-        conv = 0
+
         rel_change = []
         while step < nprew:
             
@@ -576,9 +639,11 @@ class Extract(GridTemplate):
                                         nterms=nterms,
                                         maximum_frequency=maximum_frequency)
             theta = _model_params(pg)
-            if step == 0: 
-                pg_tab = [pg.frequency.value,pg.power.value]
-                
+            
+            
+           # w_ini =  np.nanmedian(pg.power.value[(10 < pg.frequency.value) & (pg.frequency.value < 20)])
+           # z_ini =  np.nanmedian(pg.power.value[(0.07 < pg.frequency.value) & (pg.frequency.value < 0.12)])
+           # print(w_ini,z_ini)
             popt_rn, perr_rn, bic = Extract.rednoise(
                     x=pg.frequency.value, 
                     y=pg.power.value,
@@ -586,15 +651,18 @@ class Extract(GridTemplate):
                     npar = step * (2*nterms + 1) + 1,
                     nt = len(prw_res.time)
                     )
+            print(popt_rn)
+            
+            if step == 0: 
+                pg_tab = [pg.frequency.value,pg.power.value]
             
             if step > 0:
-                rel_change.append(abs(a_old-popt_rn[1])/a_old)             
-            a_old = popt_rn[1] 
-            save_rn.append(popt_rn[1])
-
+                rel_change.append(abs(a0_old-popt_rn[0]-popt_rn[1])/a0_old)            
+            a0_old =  popt_rn[0]  + popt_rn[1] 
+            save_rn.append(a0_old)
             
             n_m, n_std = noise_stats(pg,pg.frequency_at_max_power.value,sn_window,freq_mask)
-            if np.nanmean(rel_change[-5:]) < 0.1 :
+            if np.nanmean(rel_change[-3:]) < 0.1 :
                 print(f'Step {step} converged')
                 sn_val = max(pg.power)/lorentz(pg.frequency_at_max_power.value,*popt_rn)
             else:
@@ -692,7 +760,7 @@ class Extract(GridTemplate):
             for i in range(len(rn_model)):                
                 rn_prop = rn_model[i][:4]
                 ax_ls.plot(x,np.log10(lorentz(x,*rn_prop)),'r',alpha=alpha[i])
-        #    ax_ls.plot(x,np.log10(lorentz(x,*rn_prop0)),'b--')
+            #ax_ls.plot(x,np.log10(lorentz(x,3.55209592e-05,3.55209592e-05,6.43796300e-02,2.88226612e+00)),'b--')
                
 
             ax_ls.set_xscale('log')
@@ -715,7 +783,6 @@ class Extract(GridTemplate):
     @staticmethod
     def rednoise(x,
                  y,
-                 ini_params = [1e-5, 1e-3, 0.1, 3.],
                  fit_scale = 'log',
                  low_lim = 2/27., 
                  up_lim = 30.,
@@ -733,27 +800,27 @@ class Extract(GridTemplate):
         if fit_scale == 'log':
             y = np.log10(y)
             fit_func = lambda x,w,z,t,g: np.log10(lorentz(x,w,z,t,g))
+
        
         mask = (np.array(x) > low_lim) & (np.array(x) < up_lim)
         try:
-            popt, pconv = curve_fit(fit_func,x[mask],y[mask], p0=ini_params, maxfev=300)#,bounds=bounds)
+            popt, pconv = curve_fit(fit_func,x[mask],y[mask], p0=[3e-5, 1e-3, 0.1, 3], method= 'trf', maxfev=300)#,bounds=bounds)
             perr = np.sqrt(np.diag(pconv))
-            if popt[1] <= popt[0]:
-                popt = np.nan * np.empty(4)
-                perr = np.nan * np.empty(4)  
                 
             mse = sum((y - np.log10(lorentz(x,*popt)))**2)/(len(y)*(0.434**2))  
             bic = len(y)*np.log(mse) + df * np.log(nt)           
             
         except RuntimeError:
-            popt = np.nan * np.empty(4)
-            perr = np.nan * np.empty(4)            
+            popt, pconv = curve_fit(fit_func,x[mask],y[mask], p0=[3e-5,0.,np.inf,np.inf], method= 'trf', maxfev=300)#,bounds=bounds)
+            perr = np.sqrt(np.diag(pconv))
+
+            #popt = np.nan * np.empty(4)
+            #perr = np.nan * np.empty(4)            
             bic = np.nan
         
         return popt, perr, bic
     
-    
-        
+       
                   
         
 '''        
