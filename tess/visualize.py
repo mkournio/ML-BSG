@@ -54,7 +54,7 @@ class Visualize(GridTemplate):
             bin_size = 0.02083
             
         ltab = self.data.copy()
-        log_file = open("log_vis", "w")
+        log_file = open("log_vis_ems", "w")
         
         for l in ltab:
             
@@ -70,9 +70,9 @@ class Visualize(GridTemplate):
                 hdulist = fits.open(os.path.join(path_to_output_fits,filename[0]))
                 
                 sectors = get_sectors_from_hdulist(hdulist)
-                hdu_raw = [get_hdu_from_keys(hdulist, SECTOR = s, BINNING = 'F') for s in sectors]
-                hdu_bin = [get_hdu_from_keys(hdulist, SECTOR = s, BINNING = 'T', BINSIZE = str(bin_size)) for s in sectors]
-                    
+                hdu_raw = [get_hdu_from_keys(hdulist, SECTOR = s, TTYPE2 = 'flux', BINNING = 'F')[0] for s in sectors]
+                hdu_bin = [get_hdu_from_keys(hdulist, SECTOR = s, TTYPE2 = 'flux', BINNING = 'T', BINSIZE = str(bin_size))[0] for s in sectors]
+
                 if stitched:
                     
                     minmax = get_minmax_flux(hdu_bin, flux_key = self.plot_key)

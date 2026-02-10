@@ -5,7 +5,211 @@ from scipy import stats
 import re
 import EntropyHub as EH
 import matplotlib.pyplot as plt
+from lightkurve.correctors import DesignMatrix,RegressionCorrector
+from astropy import units as u
+from astropy.coordinates import SkyCoord
+from astroquery.vizier import Vizier
 
+TESS_pix_size = 21
+GAIA_UPMARK = 64
+
+class Gaia(object):
+
+    def __init__(self,tpf,ra,dec,cat='Gaia3'):
+        
+        self.tpf = tpf
+        self.ra = ra
+        self.dec = dec
+        if cat=='Gaia3' :
+            self.cat = 'I/355/gaiadr3'
+        elif cat=='Gaia2' :
+            self.cat = 'I/345/gaia2'
+        else :
+            raise ValueError("Choose between Gaia3 and Gaia2.")
+            
+        self.get_prop()
+        
+        return
+
+    def get_prop(self):
+
+        DS3 = self._query()
+
+        RA_pix,DE_pix = self.tpf.wcs.all_world2pix(DS3.RA_ICRS,DS3.DE_ICRS,0.01)
+        RA_pix += self.tpf.column ; DE_pix += self.tpf.row
+        RA_pix += 0.5 ; DE_pix += 0.5
+        
+        cond_box = (RA_pix>self.tpf.column) & (RA_pix<self.tpf.column+self.tpf.shape[2]) & \
+                   (DE_pix>self.tpf.row) & (DE_pix<self.tpf.row+self.tpf.shape[1])
+
+        DS3 = DS3[cond_box]
+        self.RA_pix = RA_pix[cond_box]
+        self.DE_pix = DE_pix[cond_box]
+        self.BPRP  = DS3['BP-RP'].values
+        RP    = DS3['RPmag'].values
+        GaIDs  = DS3['Source'].values
+        
+        self.gaia_ind = None
+        try:
+            GA_query = Vizier(catalog='I/355/gaiadr3').query_region(SkyCoord(ra=self.ra,dec=self.dec,unit=(u.deg,u.deg),
+                                                                             frame='icrs'), radius = 10 * u.arcsec)[0]
+            GA_star =  GA_query['Source'][0]
+            self.gaia_ind = np.where(GaIDs == GA_star)
+            self.star_row = int(DE_pix[self.gaia_ind] - self.tpf.row)
+            self.star_col = int(RA_pix[self.gaia_ind] - self.tpf.column)
+            self.RPdiff =  RP - np.ma.min(GA_query['RPmag'])
+        except:
+            print('No Gaia counterparts retrieved')
+            self.star_row = None
+            self.star_col = None
+            self.RPdiff =  RP - min(RP)
+            
+        return
+
+    def _query(self):
+
+        DS3 = Vizier(catalog=self.cat,columns=['*','+_r']); DS3.ROW_LIMIT = -1
+        DS3_query = DS3.query_region(SkyCoord(ra=self.tpf.ra,dec=self.tpf.dec,unit=(u.deg,u.deg), frame='icrs'),
+                                     radius = max(self.tpf.shape[1:]) * TESS_pix_size * u.arcsec)
+        DS3 = DS3_query[0].to_pandas()
+
+        return DS3
+
+    def update_mask(self, check_mask, ref_p, min_thres = 3, update = False):
+
+       min_diff = 100.
+       
+       if check_mask is not None :
+           nmask = check_mask.copy()
+           for i in range(nmask.shape[0]):
+               for j in range(nmask.shape[1]):
+                   if nmask[i,j]:
+                       tpf_row = ref_p[0] + i
+                       tpf_col = ref_p[1] + j
+                       cond_box = (self.RA_pix>tpf_col) & (self.RA_pix<tpf_col+1) & (self.DE_pix>tpf_row) & (self.DE_pix<tpf_row+1)
+                       
+                       loc_diff = self.RPdiff[cond_box & (self.RPdiff != 0)]
+                       loc_diff = loc_diff[~np.isnan(loc_diff)]
+                       if len(loc_diff) > 0 and min(loc_diff) < min_diff :
+                           min_diff = min(loc_diff)
+                           if update and min_diff < min_thres :
+                               for di in [max(0,i-1),i,min(i+1,nmask.shape[0]-1)]:
+                                   for dj in [max(0,j-1),j,min(j+1,nmask.shape[1]-1)]:
+                                       nmask[di,dj] = False
+       else:
+           nmask = None
+           
+       return nmask, min_diff
+   
+    def plot(self,ax):
+        
+        gaia_sizes = GAIA_UPMARK / 2**self.RPdiff
+        ax.scatter(self.RA_pix,self.DE_pix,s=gaia_sizes, marker='.', c='c')
+        
+        if self.gaia_ind != None:
+            ax.scatter(self.RA_pix[self.gaia_ind], self.DE_pix[self.gaia_ind], 
+                       s=GAIA_UPMARK, marker='x', color='c', linewidths=2)
+            
+        return ax
+
+   
+def getmask(tpf, star_row = None, star_col = None, thres = 0.1):
+    
+    if star_row == None:
+        star_row = int(0.5 * tpf.shape[1])
+    if star_col == None:
+        star_col = int(0.5 * tpf.shape[2])
+        
+    mask = np.zeros(tpf[0].shape[1:], dtype='bool')
+    mask[star_row][star_col] = True
+    
+    flux_matr = np.nanmedian(tpf.flux, axis=0)
+    cen_flux = flux_matr[star_row][star_col]
+    
+    rad = 1
+    mask_size = len(mask)
+    
+    for c in np.arange(star_col,mask_size,1):
+        
+        col_break = -1
+        
+        for r in np.arange(star_row,-1,-1):
+            
+            max_flx = -1            
+            if flux_matr[r][c] > thres * cen_flux:                
+                mask[r][c] = True
+                max_flx = 1
+                col_break = 1
+                
+            if max_flx < 0.:
+                break
+            
+        for r in np.arange(star_row,mask_size,1):
+            
+            max_flx = -1            
+            if flux_matr[r][c] > thres * cen_flux:
+                mask[r][c] = True
+                max_flx = 1
+                col_break = 1
+                
+            if max_flx < 0.: 
+                break
+            
+        if col_break < 0.: 
+            break
+        
+    for c in np.arange(star_col,-1,-1) :
+        
+        col_break = -1
+        
+        for r in np.arange(star_row,-1,-1):
+            
+            max_flx = -1
+            if flux_matr[r][c] > thres * cen_flux:
+                mask[r][c] = True
+                max_flx = 1
+                col_break = 1
+                
+            if max_flx < 0.: 
+                break
+            
+        for r in np.arange(star_row,mask_size,1):
+            
+            max_flx = -1
+            if flux_matr[r][c] > thres * cen_flux:
+                mask[r][c] = True
+                max_flx = 1
+                col_break = 1
+                
+            if max_flx < 0.: 
+                break
+            
+        if col_break < 0.:
+            break
+        
+    return mask	
+
+def dmatr(matr, pca_num):
+    
+    return DesignMatrix(matr,name='regressors').pca(pca_num).append_constant()
+
+def lccor(tpf, mask, bkg_mask, pca_num, **kwargs):    
+   
+    lc = tpf.to_lightcurve(aperture_mask=mask)
+    flux_mask = (lc.flux_err > 0) & (~np.isin(lc.quality,[1,4,16,32,1024,2048,16384]))
+    lc = lc[flux_mask]
+    
+    rgr = tpf.flux[flux_mask][:, bkg_mask]
+    dm = dmatr(rgr,pca_num)
+    
+    lcc = RegressionCorrector(lc).correct(dm)
+    
+    if 'gaps' in kwargs:
+        gaps = kwargs['gaps']
+        lcc.flux = set_nans(lcc.time.value, lcc.flux.value, gaps)
+
+    return lcc
+    
 def coord_to_gal(ra,dec):
       
        gal=[]
@@ -82,6 +286,22 @@ def mask_outliers(m_arr, m = 3.):
 
     return x
 	
+def set_nans(time,flux,gaps):    
+  
+    if len(gaps) != 4:
+        
+        return flux
+    
+    gb,gl,gu,ge = gaps
+    time_dif = time[1:] - time[:-1]
+    ind_nan = np.argmax(time_dif)
+    flux[ind_nan-gl:ind_nan+gu] = np.nan
+    
+    gb = max(gb,1); ge = max(ge,1)
+    flux[:gb] = np.nan; flux[-ge:] = np.nan    
+    
+    return flux
+
 
 def fill_array(a, fillvalue = 0):
 

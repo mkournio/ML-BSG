@@ -14,6 +14,7 @@ from scipy import stats
 from methods.functions import *
 from methods.plot import GridTemplate, colorbar
 from astropy.table import Table
+from tables.io import tab_to_csv
 
 class Features(object):
     
@@ -78,25 +79,28 @@ class Features(object):
             
             return Table(t_array,names=columns_names)  
         
-    def get_from_sectors(self, time_keys = [], freq_keys = [], rn_keys = [], bin_size = '10m', stitch_input = False):
+    def get_from_sectors(self, 
+                         time_keys = [], 
+                         freq_keys = [], 
+                         rn_keys = [], 
+                         bin_size = '10m', 
+                         meta_keys = [],
+                         **kwargs):
        
         if len(time_keys) == 0 and len(freq_keys) == 0 and len(rn_keys) == 0:
             return
         
-        column_names = np.concatenate((['SECT'],time_keys,freq_keys,rn_keys), axis=0)
-        
+        stars = self.data['STAR']        
+       
+        column_names = np.concatenate((['STAR'],meta_keys,time_keys,freq_keys,rn_keys), axis=0)
+
         if bin_size == '10m':
             bin_size = 0.00694
         elif bin_size == '30m':
-            bin_size = 0.02083
-            
-        stars = self.data['STAR']
-        input_cols = np.array(list(self.data.columns))
+            bin_size = 0.02083            
         
         array = []        
         for star_index, star in enumerate(stars):
-            print(self.data[star_index])
-            input_row = np.array(list(self.data[star_index]))
 
             filename = [f for f in os.listdir(path_to_output_fits) if star in f]
             if len(filename) > 0 :
@@ -109,65 +113,67 @@ class Features(object):
                     t_values = np.full(len(time_keys), np.nan)
                     f_values = np.full(len(freq_keys), np.nan)
                     r_values = np.full(len(rn_keys), np.nan)
-                    
-                    if len(time_keys) != 0:
+                    meta_values = np.full(len(meta_keys), np.nan, dtype='object')                    
                         
-                        hdu = get_hdu_from_keys(ff, SECTOR = s, TTYPE2 = 'flux', BINSIZE = str(bin_size))[0] 
-                        hdr = hdu.header
-                        
+                    hdu = get_hdu_from_keys(ff, SECTOR = s, TTYPE2 = 'flux', BINSIZE = str(bin_size))[0] 
+                    hdr = hdu.header                    
+                    if len(meta_keys) != 0:
+                        for k_index, k in enumerate(meta_keys):                            
+                            if k in hdr:
+                                meta_values[k_index] = hdr[k]
+                    if len(time_keys) != 0:               
                         for k_index, k in enumerate(time_keys):                            
                             if k in hdr:
-                                t_values[k_index] = hdr[k]                             
-                            
+                                t_values[k_index] = hdr[k]
+                                
                     if len(freq_keys) != 0:
                         
-                        hdu = get_hdu_from_keys(ff, SECTOR = s, HDUTYPE = 'FREQUENCIES', BINSIZE = str(bin_size))[0]
-                        
+                        hdu_f = get_hdu_from_keys(ff, SECTOR = s, HDUTYPE = 'FREQUENCIES', BINSIZE = str(bin_size))[0]
+                        fdata = hdu_f.data                        
                         for k_index, k in enumerate(freq_keys):
                             if 'F' in k:
                                 try:
-                                    f_values[k_index]=hdu.data[int(k[1:])]['frequency']
+                                    f_values[k_index]=fdata[int(k[1:])]['frequency']
                                 except:
                                     pass
                             elif 'SNR' in k:
                                 try:
-                                    f_values[k_index]=hdu.data[int(k[3:])]['snr']
+                                    f_values[k_index]=fdata[int(k[3:])]['snr']
                                 except:
                                     pass
                             elif 'A' in k:
                                 try:
-                                    f_values[k_index]=hdu.data[int(k[1:])]['amplitude_0']  
+                                    f_values[k_index]=fdata[int(k[1:])]['amplitude_0']  
                                 except:
                                     pass
                             elif 'R' in k:
                                 try:
-                                    f = hdu.data[int(k[2:])]                                
+                                    f = fdata[int(k[2:])]                                
                                     f_values[k_index]=f['amplitude_%s' % k[1]] / f['amplitude_0']
                                 except:
                                     pass  
                                 
                     if len(rn_keys) != 0:
                         
-                        hdu = get_hdu_from_keys(ff, SECTOR = s, HDUTYPE = 'LOMBSCARGLE', BINSIZE = str(bin_size))[0]
-                        hdr = hdu.header
-                        
+                        hdu_r = get_hdu_from_keys(ff, SECTOR = s, HDUTYPE = 'LOMBSCARGLE', BINSIZE = str(bin_size))[0]
+                        hdr = hdu_r.header                        
                         for k_index, k in enumerate(rn_keys):                            
                             if k in hdr:
                                 r_values[k_index] = hdr[k]
                                 
-                    sect_values = np.concatenate(([str(s)],t_values,f_values,r_values), axis=0)
-                    if stitch_input:
-                        sect_values = np.concatenate((input_row,sect_values), axis=0)
+                    sect_values = np.concatenate(([star],meta_values,t_values,f_values,r_values), axis=0)
                     array.append(sect_values)
                     
                 ff.close()
                 
         t_array = list(map(list, zip(*array)))
         
-        if stitch_input:
-            column_names = np.concatenate((input_cols,column_names),axis=0)
+        output = Table(t_array,names=column_names)
+        
+        if 'save_output' in kwargs:
+            tab_to_csv(output,filename=kwargs['save_output'])
                     
-        return Table(t_array,names=column_names) 
+        return output
             
     def scatter_plot(self, x, y, mode = 'matrix', invert = [], cbar = None, alpha = None, hold = False, **kwargs):
         
