@@ -9,8 +9,8 @@ pg_header_keys = ['OBJECT','TICID','SECTOR','RA_OBJ','DEC_OBJ','TESSMAG',
                   'CROWDSAP','BINNING','BINSIZE']
                   
 
-
-
+meta_keys_ls = ['RA_OBJ','DEC_OBJ','TICID','SECTOR',
+                'TESSMAG','CROWDSAP','TIMEDEL','BINSIZE']
 
 
 flux_units = {

@@ -73,7 +73,7 @@ def fourier_series(t,params):
     
     if p['nmod'] == 0:
         
-        return np.zeros(len(t))
+        return lk.LightCurve(time = t, flux = np.zeros(len(t))) 
     
     func = np.zeros(len(t))
     for m in range(p['nmod']):
@@ -82,16 +82,17 @@ def fourier_series(t,params):
         for h in range(1,p['nterms']+1):
 
             func += p[f'ampl_{m}_{h}'] * np.sin(2 * np.pi * h * p[f'f_{m}'] * (t-t[0]) + p[f'phase_{m}_{h}'])
-            
-    return func
+    
+    return lk.LightCurve(time = t, flux = func)
 
 def fit_residuals(params, x, y, y_err = []): 
     
-    if len(y_err) == 0:
+    if len(y_err) == 0 or all(y_err == np.zeros(len(y))):
         y_err = np.ones(len(y))
+        
+    model = fourier_series(x,params)
 
-    return  (fourier_series(x,params) - y)/y_err
-
+    return  (model.flux - y)/y_err
 
 def lorentz(X,w,zero,tau,gamma):
     
@@ -144,13 +145,28 @@ def get_lc_from_filename(f,**kwargs):
             try:
                 flux_err = lc[2]
             except:
-                flux_err = np.zeros(len(time))
-                
+                flux_err = np.zeros(len(time))                
             
-        flux = flux[20:-20]; time = time[20:-20]; flux_err = flux_err[20:-20]
+       # flux = flux[20:-20]; time = time[20:-20]; flux_err = flux_err[20:-20]
         lc = lk.LightCurve(time=time,flux=flux,flux_err=flux_err).remove_nans()
 
-    return lc    
+    return lc  
+
+def get_metadata_from_tpf(tpf):
+    
+    meta = {}
+    try:
+        meta['RA'] = tpf.hdu[0].header['RA_OBJ']
+        meta['DEC'] = tpf.hdu[0].header['DEC_OBJ']
+        meta['SECTOR'] = tpf.hdu[0].header['SECTOR']
+        meta['CAMERA'] = tpf.hdu[0].header['CAMERA']
+        meta['CCD'] = tpf.hdu[0].header['CCD']
+        meta['BJDREFI'] = tpf.hdu[1].header['BJDREFI']
+        meta['FFICDN'] = tpf.hdu[1].header['TIMEDEL']
+    except:
+        pass
+    
+    return meta
 
 
 class Extract(GridTemplate):
@@ -409,7 +425,7 @@ class Extract(GridTemplate):
     
     @staticmethod 
     def from_tesscut(
-            f,   
+            filename,   
             mask = None,
             thres_ape = 0.2,
             thres_bkg = 1e-4,
@@ -417,47 +433,40 @@ class Extract(GridTemplate):
             lc_bin = None,
             lc_fit_deg = 2,
             gaia_overlay = False,  
-            ax_tpf = None,
-            ax_lc = None,
-            show_extract = True,
             save_output = False,
             **kwargs): 
         
-        tpf = lk.TessTargetPixelFile(f)
-        ra = tpf.ra
-        dec = tpf.dec
-        sect = tpf.sector
-        cdn = float(tpf.hdu[1].header['TIMEDEL'])
+        tpf = lk.TessTargetPixelFile(filename)
         
+        if mask == None:
+            mask = getmask(tpf,thres=thres_ape)        
         if type(thres_bkg) == float:            
             bkg_mask = ~tpf.create_threshold_mask(thres_bkg, reference_pixel=None)
         elif thres_bkg.startswith('q'):
             bkg_mask = percentile_mask(tpf, float(thres_bkg[1:]))        
-        
-        bkg_vec = tpf.flux[:, bkg_mask]
-        bkg_vec_n = [x/np.nanmedian(x) for x in bkg_vec.T]
-        
-        g_size = kwargs.pop('gaia_size',64)        
-        G = Gaia(tpf,ra,dec,cat='Gaia3')
-        mask = getmask(tpf,thres=thres_ape)
-         
-        fig, ax = plt.subplots(2,2,figsize=(16,10))
-        fig.suptitle(f)
-        ax = ax.flatten()        
             
-        tpf.plot(ax=ax[0],frame=200,aperture_mask=mask,mask_color='#FD110D',show_colorbar=False,title='')
+        fig, ax = plt.subplots(2,2,figsize=(16,10))
+        ax = ax.flatten() 
+        
+        ## PLOT 1 - TPF            
+        tpf.plot(ax=ax[0], frame = 200, aperture_mask=mask,
+                 mask_color='#FD110D', scale='sqrt')
+        ax[0].set_title(filename,size=12)
         plot_bkg_aperture(ax[0],tpf,bkg_mask)
         if gaia_overlay:
-            G.plot(ax[0])
-                            
+            G = Gaia(tpf,cat='Gaia3')
+            G.plot(ax[0])                            
         ax[0].text(0.05,0.90,'%s' % thres_ape,color='c',size=12,transform=ax[0].transAxes)
-        ax[0].set_xlim(tpf.column,tpf.column+tpf.shape[2]-1)
-        ax[0].set_ylim(tpf.row,tpf.row+tpf.shape[1]-1)
+        ax[0].set_xlim(tpf.column-0.5,tpf.column+tpf.shape[2]-0.5)
+        ax[0].set_ylim(tpf.row-0.5,tpf.row+tpf.shape[1]-0.5)
         
-        ax[1].plot(tpf.time.value,bkg_vec[:,:30],'.')
+        ## PLOT 2 - BACKGROUND        
+        bkg_vec = tpf.flux[:, bkg_mask]
+        ax[1].plot(tpf.time.value,bkg_vec,'.')
         ax[1].set_ylabel(r'F$_{bkg}$ [e$^{-}$/s]')
         ax[1].set_xlabel(f"Time - {tpf.header['BJDREFI']} [BTJD d]")
-        
+ 
+        ## PLOT 3 - LC CORRECTIONS
         off = -0.03
         for p in [1,2,3]:
             lcc = lccor(tpf, mask, bkg_mask, pca_num = p, **kwargs)
@@ -465,42 +474,47 @@ class Extract(GridTemplate):
                        off + (lcc.flux.value/np.nanmedian(lcc.flux.value)),'.',
                        label=f'PCA {p}')
             off += 0.03
-
         ax[2].set_ylabel(r'F/F$_{med}$ + const.')
         ax[2].set_xlabel(f"Time - {tpf.header['BJDREFI']} [BTJD d]")
-        ax[2].legend(loc=4)    
-            
+        ax[2].legend(loc=4)
+        
+        ## PLOT 4 - FINAL LC [mag]          
         lcc = lccor(tpf, mask, bkg_mask, pca_num = pca, **kwargs)
         if isinstance(lc_bin,float):
             lcc = lcc.bin(time_bin_size = lc_bin)
         if isinstance(lc_fit_deg,int):
-            lcc = normalize(lcc,flux_key ="flux")[0]
-            
-       # ax[2].plot(lcc.time.value,lcc.flux.value,'b.',label = f'PCA {pca}')
-       # ax[2].plot(lcc.time.value,lcc.fitmodel.value,'r--')
-       # ax[2].legend()
-       # ax[2].set_ylabel(r'Flux (e$^{-}$/s)')
-       # ax[2].set_xlabel(f"Time - {tpf.header['BJDREFI']} [BTJD d]")
-
-        ax[3].plot(lcc.time.value,lcc.dmag.value,'k.')
+            lcc = normalize(lcc,flux_key ="flux",deg = lc_fit_deg)[0]
+        ax[3].plot(lcc.time.value,lcc.dmag.value,'k.',
+                   label = f'PCA {pca}\nbin {lc_bin}\nndim {lc_fit_deg}')
         ax[3].set_ylabel(r'$\Delta$m [mag]')
         ax[3].set_xlabel(f"Time - {tpf.header['BJDREFI']} [BTJD d]")
+        ax[3].legend(loc=3)
         ax[3].invert_yaxis()
         
-        
-        filename = f"{ra:.5f}_{dec:.5f}_s{sect}_cdn{cdn:.3f}_pca{pca}_ffi{thres_ape}"
-        
         if save_output:
-            plt.savefig(filename + '_lc.png')
-            save_three_col(lcc.time.value,lcc.dmag.value,lcc.dmag_err.value,
-                           filename+'_lc.txt')   
+            meta = get_metadata_from_tpf(tpf)
+            meta['BINNING'] = lc_bin
+            meta['REFFILE'] = filename
+            meta['PCA'] = pca
+            meta['THRESAPE'] = thres_ape
+            meta['THRESBKG'] = thres_bkg
+            meta['NORMDIM'] = lc_fit_deg
+            if 'gaps' in kwargs:
+                meta['FILLNANS'] = kwargs['gaps']
+            try:
+                out_filename = f'{meta["RA"]:.5f}_{meta["DEC"]:.5f}_s{meta["SECTOR"]}'
+            except:
+                out_filename = filename
+
+            plt.savefig(out_filename + '_lc.png')
+            save_three_col(lcc, out_filename+'_lc.txt', meta)   
             
         tpf.hdu.close()
         
         return fig
 
     @staticmethod
-    def lombscargle(
+    def lombscargle_old(
             f,
             prew = False,
             flux_key = 'dmag',
@@ -642,89 +656,99 @@ class Extract(GridTemplate):
         return lc.time[0].value, fit_model, pg_tab, rn_model
  
     @staticmethod
-    def lombscargle_global(
+    def lombscargle(
             f,
+            lc_bin = None,
             nprew = 30,
             term_sn = 4.,
-            term_criterion = 'window',
-            opt_step = 3,
+            opt_step = 1,
             opt_range = 0.1,
             nterms = 3,
             maximum_frequency=None,
             red_noise = True,
-            plot_lc = False,
-            plot_ls = False,
-            save_output = None,
+            show_plot = False,
+            save_output = False,
             **kwargs):
-        
-        lc = get_lc_from_filename(f,**kwargs)
         
         if nprew < 1:
             raise Exception('Define at least one step for frequency extraction (nprew). Aborting..')
         
-        meta = {}
-        sector = ''         
-        if isinstance(save_output,str):
-            save_output += '{}_n{}'.format(sector,nterms)
+        lc = get_lc_from_filename(f,**kwargs)
+        if isinstance(lc_bin,float):
+            if lc_bin > np.nanmedian(np.diff(lc.time.value)):
+                lc = lc.bin(time_bin_size = lc_bin).remove_nans()
+            else:
+                lc_bin = None
             
         ls_method = 'fast'
-        if nterms > 1: ls_method = 'fastchi2'
-        sn_window = kwargs.pop('sn_window',1.)
-        freq_mask = kwargs.pop('freq_mask',1/27.)        
+        if nterms > 1: 
+            ls_method = 'fastchi2'  
  
-        fit_model = [] 
         pg_tab = []
+        fit_model = []
+        rn_model = [] 
         prw_res = lc.copy()
         model = lk.LightCurve(time = prw_res.time, flux = np.zeros(len(prw_res.flux)))
 
         step = 0
-        params = Parameters()
+        rel_change = []
+        sn_window = kwargs.get('sn_window',1.)
+        freq_mask = kwargs.get('freq_mask',
+                               1/(lc.time.value[-1]-lc.time.value[0]))     
         
+        params = Parameters()        
         params.add('nterms',nterms,vary=False)
         params.add('nmod',step,vary=False)
-        save_rn=[]
 
-        rel_change = []
         while step < nprew:
             
             pg = prw_res.to_periodogram(ls_method=ls_method,
                                         nterms=nterms,
                                         maximum_frequency=maximum_frequency)
             theta = pg_model_params(pg)
+            n_m, n_std = noise_stats(pg,pg.frequency_at_max_power.value,sn_window,freq_mask)
             
+            if step == 0: 
+                pg_tab = [pg.frequency.value,pg.power.value]                
             
-           # w_ini =  np.nanmedian(pg.power.value[(10 < pg.frequency.value) & (pg.frequency.value < 20)])
-           # z_ini =  np.nanmedian(pg.power.value[(0.07 < pg.frequency.value) & (pg.frequency.value < 0.12)])
-           # print(w_ini,z_ini)
-
-            popt_rn, perr_rn, bic = Extract.rednoise(
+            if red_noise:                
+                popt_rn, perr_rn, bic = Extract.rednoise(
                     x=pg.frequency.value, 
                     y=pg.power.value,
                     fit_scale='log',
                     npar = step * (2*nterms + 1) + 1,
                     nt = len(prw_res.time)
-                    )
-            print(popt_rn)
+                    )                 
+
+                params.add(f'W0_{step}',value=popt_rn[0],min=popt_rn[0]-perr_rn[0],vary=False)
+                params.add(f'R0_{step}',value=popt_rn[1],min=popt_rn[1]-perr_rn[1],vary=False)
+                params.add(f'TAU_{step}',value=popt_rn[2],min=popt_rn[2]-perr_rn[2],vary=False)
+                params.add(f'GAMMA_{step}',value=popt_rn[3],min=popt_rn[3]-perr_rn[3],vary=False)
+
+               # rn_model.append(np.hstack([popt_rn,perr_rn]))
+                if step > 0:
+                    rel_change.append(abs(a0_old-popt_rn[0]-popt_rn[1])/a0_old)
+                a0_old =  popt_rn[0]  + popt_rn[1] 
             
-            if step == 0: 
-                pg_tab = [pg.frequency.value,pg.power.value]
-            
-            if step > 0:
-                rel_change.append(abs(a0_old-popt_rn[0]-popt_rn[1])/a0_old)            
-            a0_old =  popt_rn[0]  + popt_rn[1] 
-            save_rn.append(a0_old)
-            
-            n_m, n_std = noise_stats(pg,pg.frequency_at_max_power.value,sn_window,freq_mask)
-            if np.nanmean(rel_change[-3:]) < 0.1 :
-                print(f'Step {step} converged')
+            if red_noise and np.nanmean(rel_change[-3:]) < 0.1 :
+                #print(f'Noise model converged to step {step}/{nprew}')
                 sn_val = max(pg.power)/lorentz(pg.frequency_at_max_power.value,*popt_rn)
             else:
                 sn_val = max(pg.power)/n_std
                 
-            if sn_val < term_sn:
-                break
+            if sn_val < term_sn:                
+             
+                pg_tab.append(pg.power.value)               
+
+                break            
             
-            params['nmod'].set(value=step + 1)            
+            # ADD FIXED PARAMS TO MINIMIZER
+            params['nmod'].set(value=step + 1)
+            params.add('nterms',value=nterms,vary=False)
+            params.add(f'maxp_{step}',value=max(pg.power),vary=False)
+            params.add(f'snr_{step}',value=sn_val,vary=False)            
+
+            # ADD FREE PARAMS TO MINIMIZER            
             params.add(f'f_{step}', value=pg.frequency_at_max_power.value,
                        min = pg.frequency_at_max_power.value - freq_mask,
                        max = pg.frequency_at_max_power.value + freq_mask)            
@@ -744,96 +768,87 @@ class Extract(GridTemplate):
                                )                    
                     h += 1                
             
-            if (step+1) % opt_step == 0:
-                
+            if (step+1) % opt_step == 0:   
                 result = minimize(fit_residuals,params,
                               args=(lc.time.value,lc.flux.value,lc.flux_err.value))
-                params = result.params
+                params = result.params                
                 for p in params:
-                    params[p].vary = False
-            
-            fit_model.append([pg.frequency_at_max_power.value,sn_val.value,*theta])
-            model.flux = model.flux + pg.model(time=prw_res.time, frequency=pg.frequency_at_max_power).flux
+                    params[p].vary = False                   
+           
+            model = fourier_series(lc.time.value, params)
             prw_res.flux = lc.flux - model.flux
+            #model.flux = model.flux + pg.model(time=prw_res.time, frequency=pg.frequency_at_max_power).flux
+            #prw_res.flux = lc.flux - model.flux
             
-            step += 1
+            step += 1  
             
-        plt.plot(save_rn,'o')
-        plt.show()
+        if show_plot:
+            fig = plt.figure(figsize=(22, 6))
+            gs = GridSpec(1, 3, figure=fig)            
+            ax_lc = fig.add_subplot(gs[0, :2])
+            ax_ls = fig.add_subplot(gs[0, 2])            
+            fig.suptitle(f)
+        else:
+            if 'ax_lc' in kwargs: ax_lc = kwargs['ax_lc']
+            if 'ax_ls' in kwargs: ax_ls = kwargs['ax_ls']            
+                  
+        if 'ax_lc' in locals(): 
+                 
+            ax_lc.plot(lc.time.value,lc.flux.value,'k.',label='Observed')
             
-       # print(params,fit_model)   
-        pg_tab.append(pg.power.value)          
-
-    #    result = minimize(fit_residuals,params,
-    #                     args=(lc.time.value,lc.flux.value,lc.flux_err.value))
-    #    params = result.params
-    #    print(params)
-       # print(fit_model)
-
-        sinf1 = fourier_series(lc.time.value,params)
-                
-        rn_model = [] 
-        if red_noise:
-            for p in pg_tab[1:]:
-                popt, perr,_ = Extract.rednoise(x=pg_tab[0], y=p, fit_scale='log')
-                rn_model.append(np.hstack([popt,perr]))
-                
-        if plot_lc:
-            plt.rcParams.update(PLOT_PARAMS['lc'])
+            fourier = fourier_series(lc.time.value,params)
+            ax_lc.plot(lc.time.value,fourier.flux.value,'c.',label=f'GLS model')
+            #ax_lc.plot(model.time.value,model.flux.value,'r',label='Lightkurve model')
             
-            if 'ax_lc' in kwargs:
-                ax_lc = kwargs['ax_lc']
-            else:
-                _, ax_lc = plt.subplots(figsize=(10, 5))
-            
-            ax_lc.plot(lc.time.value,lc.flux.value,'k',label='observed')
-            ax_lc.plot(lc.time.value,sinf1,'r',label=f'opt{opt_step} model')
-         #   ax_lc.plot(lc.time.value,sinf2,'r',label='model2')
-            ax_lc.plot(model.time.value,model.flux.value,'c',label='opt1 model')
-           
-
             ax_lc.set_xlabel(PLOT_XLABEL['lc'])
-            ax_lc.set_ylabel(PLOT_YLABEL['dmag'])
-            
+            ax_lc.set_ylabel(PLOT_YLABEL['dmag'])            
             ax_lc.invert_yaxis() 
-            ax_lc.legend()
-           
-            if isinstance(save_output,str):
-                plt.savefig(save_output + '_lc.png')
-            #ax_lc.plot(lc.time.value,siny,'g--')
-              
-        if plot_ls:
-            if 'ax_ls' in kwargs:
-                ax_ls = kwargs['ax_ls']
-            else:
-                _, ax_ls = plt.subplots(figsize=(10, 7))            
+            ax_lc.legend(fontsize=12)           
+            
+        if 'ax_ls' in locals():     
               
             alpha = np.linspace(1,0.4,len(pg_tab)-1)  
             for i in range(1,len(pg_tab)):
                 x=pg_tab[0]                
-                ax_ls.plot(x,np.log10(pg_tab[i]),'k',alpha=alpha[i-1])
+                ax_ls.plot(x,pg_tab[i],'k',alpha=alpha[i-1])
                 
-            for i in range(len(rn_model)):                
-                rn_prop = rn_model[i][:4]
-                ax_ls.plot(x,np.log10(lorentz(x,*rn_prop)),'r',alpha=alpha[i])
-            #ax_ls.plot(x,np.log10(lorentz(x,3.55209592e-05,3.55209592e-05,6.43796300e-02,2.88226612e+00)),'b--')
-               
+            if red_noise: 
+                for i, ls in zip([params['nmod'].value],['-']):
+                    rn_prop = [params[f'W0_{i}'],
+                               params[f'R0_{i}'],
+                               params[f'TAU_{i}'],
+                               params[f'GAMMA_{i}']]                               
+                    ax_ls.plot(x,lorentz(x,*rn_prop),'r',ls=ls)
 
             ax_ls.set_xscale('log')
+            ax_ls.set_yscale('log')
+
             ax_ls.set_xlim([0.05,x[-1]])                
-            ax_ls.set_ylim([-6.4,None])
+            ax_ls.set_ylim([1e-5,None])
             ax_ls.set_xlabel(PLOT_XLABEL['ls'])
-            ax_ls.set_ylabel(PLOT_YLABEL['ls'])
+            ax_ls.set_ylabel(r'Amplitude [mag]')
             
-            if isinstance(save_output,str):
-                plt.savefig(save_output + '_ls.png')
+        if save_output:
             
-        if isinstance(save_output,str):
-            ls_params(freq_tab=fit_model,rn_tab=rn_model,
-                      output=save_output + '_params', meta = meta, **kwargs)            
-        
+            meta = {'REFFILE':f,
+                    'BINNING':lc_bin,
+                    'FREQRSL': freq_mask,
+                    'TERMSN': term_sn,
+                    'WINDSN': sn_window,
+                    'OPTSTEP': opt_step
+                    }
             
-        return lc.time[0].value, fit_model, pg_tab, rn_model
+            out_filename = f.replace('.txt','')
+            out_filename = out_filename.replace('_lc','_ls')
+            if 'fig' in locals():
+                plt.savefig(out_filename + '.png')
+                
+            ls_params(output=out_filename, 
+                      params = params,
+                      pg_tab = pg_tab, 
+                      meta = meta, **kwargs)      
+            
+        return params, pg_tab
 
       
     @staticmethod
@@ -867,11 +882,10 @@ class Extract(GridTemplate):
             bic = len(y)*np.log(mse) + df * np.log(nt)           
             
         except RuntimeError:
-            #popt, pconv = curve_fit(fit_func,x[mask],y[mask], p0=[3e-5,0.,np.inf,np.inf], method= 'lm', maxfev=300)#,bounds=bounds)
-            #perr = np.sqrt(np.diag(pconv))
-
-            popt = np.nan * np.empty(4)
-            perr = np.nan * np.empty(4)            
+            popt, pconv = curve_fit(fit_func,x[mask],y[mask], p0=[3e-5,0.,np.inf,np.inf], method= 'lm', maxfev=400)#,bounds=bounds)
+            perr = np.sqrt(np.diag(pconv))
+            #popt = np.nan * np.empty(4)
+            #perr = np.nan * np.empty(4)            
             bic = np.nan
         
         return popt, perr, bic

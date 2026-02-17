@@ -15,11 +15,11 @@ GAIA_UPMARK = 64
 
 class Gaia(object):
 
-    def __init__(self,tpf,ra,dec,cat='Gaia3'):
+    def __init__(self,tpf,cat='Gaia3'):
         
         self.tpf = tpf
-        self.ra = ra
-        self.dec = dec
+        self.ra = tpf.ra
+        self.dec = tpf.dec
         if cat=='Gaia3' :
             self.cat = 'I/355/gaiadr3'
         elif cat=='Gaia2' :
@@ -297,8 +297,8 @@ def set_nans(time,flux,gaps):
     ind_nan = np.argmax(time_dif)
     flux[ind_nan-gl:ind_nan+gu] = np.nan
     
-    gb = max(gb,1); ge = max(ge,1)
-    flux[:gb] = np.nan; flux[-ge:] = np.nan    
+    if gb > 0: flux[:gb] = np.nan
+    if ge > 0: flux[-ge:] = np.nan
     
     return flux
 
@@ -471,13 +471,25 @@ def save_two_col(x,y,filename):
 
 	return
 
-def save_three_col(x,y,z,filename):
-
-	with open(filename,'w') as f:
-		for i,j,k in zip(x,y,z):
-    			f.write("%s %s %s\n" % (i,j,k))
-	f.close()
-
-	return
+def save_three_col(lc, filename, meta, units = 'mag'):
+    
+    x = lc.time.value
+    if units == 'mag':
+        y = lc.dmag.value
+        z = lc.dmag_err.value
+        header = f'##BTJD-REF\tDMAG\tDMAG_ERR\n'
+        
+    with open(filename,'w') as f:
+        
+        for m in meta:
+            f.write(f'#{m} = {meta[m]}\n')
+            
+        f.write(header)   
+        for i,j,k in zip(x,y,z):
+            f.write("%s %s %s\n" % (i,j,k))
+            
+    f.close()
+    
+    return
 
 
