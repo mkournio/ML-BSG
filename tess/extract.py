@@ -378,7 +378,7 @@ class Extract(GridTemplate):
         return
     
     def periodograms(self,
-                     bin_size = '10m',
+                     bin_size,
                      stitched = False,
                      nterms = 3,
                      prew = True,
@@ -387,17 +387,14 @@ class Extract(GridTemplate):
         
         if bin_size not in ['raw','10m','30m']:
             raise Exception('Set bin_size among raw, 10m, 30m. Aborting..')
-            
+      
         if bin_size == '10m':
             bin_size = 0.00694
         elif bin_size == '30m':
             bin_size = 0.02083
 
-        
-        stars = self.data['STAR']
-        tics = self.data['TIC']
-        
-        for star, tic in zip(stars,tics):
+        ltab = self.data
+        for star, tic in zip(ltab['STAR'],ltab['TIC']):
             
             fits_files = [j for j in os.listdir(path_to_output_fits) if ((star in j) and (str(tic) in j))]
             
@@ -412,15 +409,30 @@ class Extract(GridTemplate):
                     pass
                 
                 else:
-                    hdus = get_hdu_from_keys(ff[1:], TTYPE1 = 'time', BINSIZE = str(bin_size))
+                    hdus = get_hdu_from_keys(ff[1:], HDUTYPE = 'LIGHTCURVE', BINSIZE = str(bin_size))
                     for hdu in hdus:
-                        t0, freq_tab, pg_tab, rn_tab = self.lombscargle(hdu, prew=prew, nterms=nterms, maximum_frequency = maximum_frequency)
-                        FitsObject.append_lombscargle(ff, pg_tab, rn_tab, header_source = hdu.header)
-                        FitsObject.append_frequencies(ff, freq_tab, t0, header_source = hdu.header)
+                        ax_lc = self.GridAx()
+                        ax_ls = self.GridAx()                        
+                        param, pg_tab = self.lombscargle(hdu, 
+                                                         prew=prew, 
+                                                         nterms=nterms,
+                                                         maximum_frequency = maximum_frequency,
+                                                         ax_lc = ax_lc,
+                                                         ax_ls = ax_ls,
+                                                         out_filename = f'{star}_s{hdu.header["SECTOR"]}',
+                                                         )
+                        ax_lc.set_xlabel(''); ax_lc.set_ylabel('')
+                        ax_ls.set_xlabel(''); ax_ls.set_ylabel('')
+
+
+                       # FitsObject.append_lombscargle(ff, pg_tab, rn_tab, header_source = hdu.header)
+                      #  FitsObject.append_frequencies(ff, freq_tab, t0, header_source = hdu.header)
                         
-                ff.writeto(get_fits_name(star,tic), overwrite=True)
+               # ff.writeto(get_fits_name(star,tic), overwrite=True)
                 ff.close()
                 
+        self.close_plot()
+             
         return
     
     @staticmethod 
@@ -658,12 +670,12 @@ class Extract(GridTemplate):
     @staticmethod
     def lombscargle(
             f,
+            nterms = 3,
             lc_bin = None,
             nprew = 30,
-            term_sn = 4.,
+            term_sn = 3.9,
             opt_step = 1,
             opt_range = 0.1,
-            nterms = 3,
             maximum_frequency=None,
             red_noise = True,
             show_plot = False,
@@ -824,22 +836,28 @@ class Extract(GridTemplate):
             ax_ls.set_yscale('log')
 
             ax_ls.set_xlim([0.05,x[-1]])                
-            ax_ls.set_ylim([1e-5,None])
+            ax_ls.set_ylim([8e-6,None])
             ax_ls.set_xlabel(PLOT_XLABEL['ls'])
             ax_ls.set_ylabel(r'Amplitude [mag]')
             
         if save_output:
             
-            meta = {'REFFILE':f,
-                    'BINNING':lc_bin,
+            meta = {'BINNING':lc_bin,
                     'FREQRSL': freq_mask,
                     'TERMSN': term_sn,
                     'WINDSN': sn_window,
                     'OPTSTEP': opt_step
                     }
             
-            out_filename = f.replace('.txt','')
-            out_filename = out_filename.replace('_lc','_ls')
+            if 'out_filename' in kwargs:
+                out_filename = kwargs['out_filename']
+                meta['REFFILE'] = out_filename
+                out_filename += '_ls'
+            else:
+                meta['REFFILE'] = f
+                out_filename = f.replace('.txt','')
+                out_filename = out_filename.replace('_lc','_ls')              
+            
             if 'fig' in locals():
                 plt.savefig(out_filename + '.png')
                 

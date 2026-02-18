@@ -74,7 +74,7 @@ HD269929                ,5.90,4.30,3.93,LBV,LMC,DJG98,
 HD37836                 ,    ,    ,    ,LBV?,LMC,VG01,R 123
 HD269858                ,6.10,4.48,3.93,LBV,LMC,DJG98|HD94,R 127
 HD269859                ,    ,    ,    ,LBV?,LMC,VG01,R 128
-CPD-69 463              ,    ,    ,    ,LBV,LMC,HD94,R 143
+CPD-69 463              ,5.90,4.30,3.93,LBV,LMC,HD94,R 143
 SK −69 257              ,    ,    ,    ,LBV?,LMC,VG01,R 149
 CPD−69 500              ,    ,    ,    ,LBV?,LMC,WE97,SK −69 271
 SK −69 279              ,    ,    ,    ,LBV?,LMC,VG01,
@@ -194,7 +194,26 @@ LGGS J013349.28+305250.2,5.10,4.30,    ,B[e]SG,M33,HU17,
 LGGS J013426.11+303424.7,4.78,4.09,    ,B[e]SG,M33,CL12|HU17,
 LGGS J013459.47+303701.9,5.50,4.36,    ,B[e]SG,M33,CL12|HU17,
 LGGS J013500.30+304150.9,4.78,4.21,    ,B[e]SG,M33,CL12|HU17,
-#
+CRL2688			,5.54,3.76,    ,YHG?,MW,DJ98,
+HD7583			,5.52,3.99,    ,YHG,SMC,DJ98,
+HD33579			,5.86,3.92,    ,YHG?,LMC,DJ98,
+HD96918			,5.54,3.73,    ,YHG,MW,DJ98,V382 Car
+HR5171			,5.70,3.67,    ,YHG,MW,DJ98,
+HR8752			,5.60,3.82,3.62,YHG,MW,DJ98,
+6 CAS			,5.26,3.95,    ,YHG,MW,DJ98,
+RHO CAS			,5.70,3.86,3.71,YHG,MW,DJ98,
+HD269172		,5.28,3.98,    ,YHG?,LMC,DJ98,
+HD269723		,5.50,3.67,    ,YHG?,LMC,DJ98,
+HD268757                ,5.64,3.71,3.69,YHG?,LMC,DJG98,
+HD269953                ,5.59,3.69,    ,YHG?,LMC,DJ98,
+HD269797                ,5.30,4.05,    ,YHG?,LMC,DJG98,R 120
+HD270086                ,5.38,3.98,    ,YHG?,LMC,DJ98,
+HD271182		,5.51,3.72,    ,YHG?,LMC,DJ98,
+HD271192		,5.31,3.99,    ,YHG?,LMC,DJ98,
+IRC+10420               ,5.80,3.90,    ,YHG,MW,DJ98,
+[HS53] A                ,5.70,3.75,3.50,YHG,M33,DJ98,Var A
+LGGS J013358.05+304539.9,5.62,3.78,    ,YHG?,M33,K17,
+##
 #REFERENCES
 #LBVs CROSS-MATCHED WITH RICHARDSON & MEHNER 2018
 #HD94 = Humphreys & Davidson (1994); VG01 = van Genderen (2001); C05 = Clark et al. (2005); 

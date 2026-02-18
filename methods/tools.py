@@ -279,9 +279,76 @@ class FitsList(object):
     
     def __init__(self, tab):
         
-        self.tab = tab
+        self.tab = tab.copy()
+        
         
         return
+    
+    def add_header_keys(self, key_dict, primary= False, replace = False):
+        
+        if len(key_dict) < 1:
+            
+            return
+        
+        print('Adding keys from headers..')
+
+        ltab = self.tab
+        for star, tic in zip(ltab['STAR'],ltab['TIC']):
+            
+            filename = [f for f in os.listdir(path_to_output_fits) if star in f]            
+            if len(filename) > 0 :
+                
+                ff = fits.open(os.path.join(path_to_output_fits,filename[0]))
+                
+                if primary :
+                    hdus = [ff[0]]
+                else:
+                    hdus = ff[1:]                    
+                    
+                for hdu in hdus:
+                    hdr = hdu.header
+                    for k in key_dict:                        
+                        if k in hdr and not replace:
+                            pass
+                        else:
+                            hdr[k] = key_dict[k]
+                
+                ff.writeto(os.path.join(path_to_output_fits,filename[0]), overwrite=True)
+                ff.close()
+                
+        return
+    
+    def remove_header_keys(self, keys = [], primary = False):
+        
+        if len(keys) < 1:
+            
+            return 
+        
+        print('Removing keys from headers..')
+        
+        ltab = self.tab       
+        for star, tic in zip(ltab['STAR'],ltab['TIC']):
+            
+            filename = [f for f in os.listdir(path_to_output_fits) if star in f]            
+            if len(filename) > 0 :
+                
+                ff = fits.open(os.path.join(path_to_output_fits,filename[0]))
+                
+                if primary :
+                    hdus = [ff[0]]
+                else:
+                    hdus = ff[1:]  
+                
+                for hdu in hdus:
+                    hdr = hdu.header
+                    for k in keys:
+                        if k in hdr: 
+                            del hdr[k]
+                            
+                ff.writeto(os.path.join(path_to_output_fits,filename[0]), overwrite=True)
+                ff.close()
+                   
+        return    
     
     def remove_hdu(self, hdutypes = []):
         
@@ -289,12 +356,10 @@ class FitsList(object):
             
             return
         
-        ltab = self.tab.copy()
-        fits_list = os.listdir(path_to_output_fits)        
-        
+        ltab = self.tab
         for star, tic in zip(ltab['STAR'],ltab['TIC']):
             
-            filename = [f for f in fits_list if star in f]            
+            filename = [f for f in os.listdir(path_to_output_fits) if star in f]            
             if len(filename) > 0 :
                 
                 ff = fits.open(os.path.join(path_to_output_fits,filename[0]))

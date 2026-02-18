@@ -130,43 +130,7 @@ class TimeDomain(object):
                 ff.writeto(os.path.join(path_to_output_fits,filename[0]), overwrite=True)
                 ff.close()                                              
                 
-        return
-    
-    def reset_headers(self, primary = True, sectors = False):
-        
-        if (len(self.measures) == 0) or (not any([primary,sectors])):
-            
-            return 
-        
-        print('Reseting time-domain metrics..')
-        
-        extra_keys = ['SCOMBINE','SBINSIZE']
-        measures = self.measures + extra_keys 
-        
-        stars = self.data['STAR']
-        tics = self.data['TIC']        
-        for star, tic in zip(stars,tics):
-            
-            filename = [f for f in os.listdir(path_to_output_fits) if star in f]
-            if len(filename) > 0 :
-                
-                ff = fits.open(os.path.join(path_to_output_fits,filename[0]))
-                
-                hdus = ff
-                if primary and not sectors:
-                    hdus = [ff[0]]
-                elif sectors and not primary:
-                    hdus = ff[1:]
-                
-                for hdu in hdus:
-                        hdr = hdu.header
-                        for m in measures:
-                            if m in hdr: del hdr[m]
-                    
-                ff.writeto(os.path.join(path_to_output_fits,filename[0]), overwrite=True)
-                ff.close()
-                   
-        return        
+        return     
            
     @staticmethod
     def single_lc(f, measures, flux_key = 'dmag'):
