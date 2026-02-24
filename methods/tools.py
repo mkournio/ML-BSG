@@ -78,6 +78,108 @@ def get_fits_name(star,tic):
     
     return os.path.join(path_to_output_fits,'{}_{}.fits'.format(star,tic))
 
+class FitsManager(object):
+    
+    def __init__(self, hdulist):
+        
+        self.hdulist = hdulist
+        
+        return
+    
+    def _add_hdu_frequencies(self, params, source_header = {}, meta = {}):
+        
+        nmod = params['nmod'].value
+        nterms = params['nterms'].value  
+        
+        ls_data = []       
+        for m in range(nmod+1):
+            
+            m_par = []
+            
+            if f'f_{m}' in params:
+                m_par.extend(
+                    [params[f'f_{m}'].value,
+                     params[f'maxp_{m}'].value,
+                     params[f'snr_{m}'].value,
+                     params[f'offset_{m}'].value])
+                for h in range(1,nterms+1):
+                    m_par.extend(
+                        [params[f'ampl_{m}_{h}'].value,
+                         params[f'phase_{m}_{h}'].value])
+            else:
+                m_par.extend(np.full(4 + 2*nterms, np.nan))
+                
+            if f'W0_{m}' in params:
+                m_par.extend(
+                    [params[f'W0_{m}'].value,
+                     params[f'R0_{m}'].value,
+                     params[f'TAU_{m}'].value,
+                     params[f'GAMMA_{m}'].value,
+                     params[f'W0_{m}'].value-params[f'W0_{m}'].min,
+                     params[f'R0_{m}'].value-params[f'R0_{m}'].min,
+                     params[f'TAU_{m}'].value-params[f'TAU_{m}'].min,
+                     params[f'GAMMA_{m}'].value-params[f'GAMMA_{m}'].min])
+            else:
+                m_par.extend(np.full(8, np.nan))
+                
+            ls_data.append(m_par)
+            
+        tr_ls = list(map(list, zip(*ls_data)))
+        
+        cols = []
+        cols.append(fits.Column(name='frequency',format="E", unit='1/d',array=tr_ls[0]))
+        cols.append(fits.Column(name='maxp',format="E", unit='mag',array=tr_ls[1]))
+        cols.append(fits.Column(name='snr',format="E",array=tr_ls[2]))
+        cols.append(fits.Column(name='offset',format="E",unit='mag',array=tr_ls[3]))
+        for h in range(1,nterms+1):  
+            cols.append(fits.Column(name=f'amplitude_{h}',format="E",unit='mag',array=tr_ls[4 + 2*(h-1)]))
+            cols.append(fits.Column(name=f'phase_{h}',format="E",unit='rad',array=tr_ls[5 + 2*(h-1)]))
+            
+        r = 4 + 2*nterms   
+        for rc in ['W0','R0','TAU','GAMMA']:
+            cols.append(fits.Column(name=f'{rc}',format="E", array=tr_ls[r]))
+            cols.append(fits.Column(name=f'e_{rc}',format="E", array=tr_ls[r + 4]))
+            r += 1
+            
+        coldefs = fits.ColDefs(cols)
+        
+        hdu = fits.BinTableHDU.from_columns(coldefs)
+        hdu.header['HDUTYPE'] = 'FREQUENCIES'
+        
+        for key in source_header:
+            if key in pg_header_keys:
+                hdu.header[key] = source_header[key] 
+                
+        for m in meta:
+                hdu.header[m] = meta[m] 
+        
+        self.hdulist.append(hdu)
+        
+        return
+    
+    def _add_hdu_periodograms(self, pg, source_header = {}, meta = {}):
+        
+        cols = []
+        cols.append(fits.Column(name='frequency',format="E",unit='1/d',array=pg[0]))
+        cols.append(fits.Column(name='ampl_ini',format="E",unit='mag',array=pg[1]))
+        cols.append(fits.Column(name='ampl_end',format="E",unit='mag',array=pg[2]))
+        
+        coldefs = fits.ColDefs(cols)
+        hdu = fits.BinTableHDU.from_columns(coldefs)
+        hdu.header['HDUTYPE'] = 'PERIODOGRAMS'
+        
+        for key in source_header:
+            if key in pg_header_keys:
+                hdu.header[key] = source_header[key] 
+                
+        for m in meta:
+                hdu.header[m] = meta[m] 
+        
+        self.hdulist.append(hdu)
+        
+        return
+    
+
 class FitsObject(object):
 
       def __init__(self,fits_file = None,**kwargs):

@@ -145,9 +145,8 @@ def get_lc_from_filename(f,**kwargs):
             try:
                 flux_err = lc[2]
             except:
-                flux_err = np.zeros(len(time))                
+                flux_err = np.zeros(len(time))              
             
-       # flux = flux[20:-20]; time = time[20:-20]; flux_err = flux_err[20:-20]
         lc = lk.LightCurve(time=time,flux=flux,flux_err=flux_err).remove_nans()
 
     return lc  
@@ -182,7 +181,8 @@ class Extract(GridTemplate):
      
      # probably the following line should move  to lightcurves functions
      super().__init__(rows_page = PLOT_XLC_NROW, cols_page = PLOT_XLC_NCOL,
-                      fig_xlabel= PLOT_XLABEL['lc'], fig_ylabel=PLOT_YLABEL[plot_key], **kwargs)
+                  #    fig_xlabel= PLOT_XLABEL['lc'], fig_ylabel=PLOT_YLABEL[plot_key], 
+                      **kwargs)
      
      self.close_plot()
 
@@ -382,16 +382,15 @@ class Extract(GridTemplate):
                      stitched = False,
                      nterms = 3,
                      prew = True,
-                     maximum_frequency = None,                     
                      **kwargs):
         
         if bin_size not in ['raw','10m','30m']:
             raise Exception('Set bin_size among raw, 10m, 30m. Aborting..')
       
         if bin_size == '10m':
-            bin_size = 0.00694
+            bin_size_d = 0.00694
         elif bin_size == '30m':
-            bin_size = 0.02083
+            bin_size_d = 0.02083
 
         ltab = self.data
         for star, tic in zip(ltab['STAR'],ltab['TIC']):
@@ -409,26 +408,33 @@ class Extract(GridTemplate):
                     pass
                 
                 else:
-                    hdus = get_hdu_from_keys(ff[1:], HDUTYPE = 'LIGHTCURVE', BINSIZE = str(bin_size))
+                    hdus = get_hdu_from_keys(ff[1:], HDUTYPE = 'LIGHTCURVE', BINSIZE = str(bin_size_d))
                     for hdu in hdus:
-                        ax_lc = self.GridAx()
-                        ax_ls = self.GridAx()                        
-                        param, pg_tab = self.lombscargle(hdu, 
+                        
+                      ax_lc = self.GridAx()
+                      ax_ls = self.GridAx()                      
+                      hdr = hdu.header
+                      param, pg_tab, meta = self.lombscargle(hdu, 
                                                          prew=prew, 
                                                          nterms=nterms,
-                                                         maximum_frequency = maximum_frequency,
                                                          ax_lc = ax_lc,
                                                          ax_ls = ax_ls,
-                                                         out_filename = f'{star}_s{hdu.header["SECTOR"]}',
+                                                        # save_output = True,   
+                                                        # show_plot=True,
+                                                         ref_file = f'{star}_s{hdr["SECTOR"]}_{bin_size}',
+                                                         **kwargs
                                                          )
-                        ax_lc.set_xlabel(''); ax_lc.set_ylabel('')
-                        ax_ls.set_xlabel(''); ax_ls.set_ylabel('')
-
-
-                       # FitsObject.append_lombscargle(ff, pg_tab, rn_tab, header_source = hdu.header)
-                      #  FitsObject.append_frequencies(ff, freq_tab, t0, header_source = hdu.header)
+                      ax_lc.legend(loc=1)
+                      ax_lc.text(0.05,0.05,meta['REFFILE'],transform = ax_lc.transAxes)
+                      ax_ls.text(0.05,0.05,meta['REFFILE'],transform = ax_ls.transAxes)
+                         
+                      hdulist = FitsManager(ff)
+                      hdulist._add_hdu_frequencies(param, source_header = hdr, meta = meta)
+                      hdulist._add_hdu_periodograms(pg_tab, source_header = hdr, meta = meta)                     
+                      # FitsObject.append_lombscargle(ff, pg_tab, rn_tab, header_source = hdu.header)
+                      #FitsObject.append_frequencies(ff, freq_tab, t0, header_source = hdu.header)
                         
-               # ff.writeto(get_fits_name(star,tic), overwrite=True)
+                ff.writeto(get_fits_name(star,tic), overwrite=True)
                 ff.close()
                 
         self.close_plot()
@@ -676,16 +682,18 @@ class Extract(GridTemplate):
             term_sn = 3.9,
             opt_step = 1,
             opt_range = 0.1,
-            maximum_frequency=None,
+            maximum_frequency = None,
             red_noise = True,
             show_plot = False,
             save_output = False,
             **kwargs):
-        
+
         if nprew < 1:
             raise Exception('Define at least one step for frequency extraction (nprew). Aborting..')
         
         lc = get_lc_from_filename(f,**kwargs)
+        lc = lc.remove_outliers(sigma=3.)
+        
         if isinstance(lc_bin,float):
             if lc_bin > np.nanmedian(np.diff(lc.time.value)):
                 lc = lc.bin(time_bin_size = lc_bin).remove_nans()
@@ -697,8 +705,6 @@ class Extract(GridTemplate):
             ls_method = 'fastchi2'  
  
         pg_tab = []
-        fit_model = []
-        rn_model = [] 
         prw_res = lc.copy()
         model = lk.LightCurve(time = prw_res.time, flux = np.zeros(len(prw_res.flux)))
 
@@ -757,8 +763,8 @@ class Extract(GridTemplate):
             # ADD FIXED PARAMS TO MINIMIZER
             params['nmod'].set(value=step + 1)
             params.add('nterms',value=nterms,vary=False)
-            params.add(f'maxp_{step}',value=max(pg.power),vary=False)
-            params.add(f'snr_{step}',value=sn_val,vary=False)            
+            params.add(f'maxp_{step}',value=max(pg.power).value,vary=False)
+            params.add(f'snr_{step}',value=sn_val.value,vary=False)            
 
             # ADD FREE PARAMS TO MINIMIZER            
             params.add(f'f_{step}', value=pg.frequency_at_max_power.value,
@@ -819,10 +825,11 @@ class Extract(GridTemplate):
             
         if 'ax_ls' in locals():     
               
-            alpha = np.linspace(1,0.4,len(pg_tab)-1)  
+          #  alpha = np.linspace(1,0.4,len(pg_tab)-1)  
+            color = ['k','0.7']
             for i in range(1,len(pg_tab)):
                 x=pg_tab[0]                
-                ax_ls.plot(x,pg_tab[i],'k',alpha=alpha[i-1])
+                ax_ls.plot(x,pg_tab[i],color = color[i-1])
                 
             if red_noise: 
                 for i, ls in zip([params['nmod'].value],['-']):
@@ -836,37 +843,41 @@ class Extract(GridTemplate):
             ax_ls.set_yscale('log')
 
             ax_ls.set_xlim([0.05,x[-1]])                
-            ax_ls.set_ylim([8e-6,None])
+            ax_ls.set_ylim([5e-6,None])
             ax_ls.set_xlabel(PLOT_XLABEL['ls'])
             ax_ls.set_ylabel(r'Amplitude [mag]')
             
-        if save_output:
+        meta = {'LSBIN': lc_bin,
+                'T0' : lc.time[0].value,
+                'NTERMS' : nterms,
+                'MAXPREW' : nprew,
+                'FREQRSL': freq_mask,
+                'TERMSN': term_sn,
+                'WINDSN': sn_window,
+                'OPTSTEP': opt_step,
+                'OPTRANGE': opt_range,
+                }
+        
+        if 'ref_file' in kwargs:
+            meta['REFFILE'] = kwargs['ref_file']
+        else:
+            meta['REFFILE'] = str(f)          
             
-            meta = {'BINNING':lc_bin,
-                    'FREQRSL': freq_mask,
-                    'TERMSN': term_sn,
-                    'WINDSN': sn_window,
-                    'OPTSTEP': opt_step
-                    }
+        if save_output:   
             
-            if 'out_filename' in kwargs:
-                out_filename = kwargs['out_filename']
-                meta['REFFILE'] = out_filename
-                out_filename += '_ls'
-            else:
-                meta['REFFILE'] = f
-                out_filename = f.replace('.txt','')
-                out_filename = out_filename.replace('_lc','_ls')              
+            out_filename = meta['REFFILE']
+            out_filename = out_filename.replace('.txt','')
+            out_filename = out_filename.replace('_lc','')
             
             if 'fig' in locals():
-                plt.savefig(out_filename + '.png')
+                plt.savefig(out_filename + '_ls.png')
                 
             ls_params(output=out_filename, 
                       params = params,
                       pg_tab = pg_tab, 
                       meta = meta, **kwargs)      
             
-        return params, pg_tab
+        return params, pg_tab, meta
 
       
     @staticmethod
@@ -900,10 +911,15 @@ class Extract(GridTemplate):
             bic = len(y)*np.log(mse) + df * np.log(nt)           
             
         except RuntimeError:
-            popt, pconv = curve_fit(fit_func,x[mask],y[mask], p0=[3e-5,0.,np.inf,np.inf], method= 'lm', maxfev=400)#,bounds=bounds)
-            perr = np.sqrt(np.diag(pconv))
-            #popt = np.nan * np.empty(4)
-            #perr = np.nan * np.empty(4)            
+            try:
+                popt, pconv = curve_fit(fit_func,x[mask],y[mask], p0=[1e-5,0.,np.inf,np.inf], method= 'lm', maxfev=400)
+                perr = np.sqrt(np.diag(pconv))
+            except RuntimeError:
+                print('Red noise - solution could not be fount. Setting params to nan.')
+                popt = np.nan * np.empty(4)
+                perr = np.nan * np.empty(4)
+                pass
+            
             bic = np.nan
         
         return popt, perr, bic

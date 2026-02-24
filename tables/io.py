@@ -28,8 +28,8 @@ def ls_params(output='params',params={},pg_tab=[],meta={},**kwargs):
                 file.write(f'#{m} = {meta[m]}\n')
                 
         header = ['##STEP']
-        header.extend(['FREQ0','P0','SNR','OFFSET'])
-        for h in range(1,params['nterms'].value+1):
+        header.extend(['FREQUENCY','MAXP','SNR','OFFSET'])
+        for h in range(1,nterms+1):
             header.append(f'AMP{h}')
             header.append(f'PHS{h}')
         header.extend(['W0','R0','TAU','GAMMA',

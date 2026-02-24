@@ -5,8 +5,8 @@ tess_header_keys_p = ['TSTART','TSTOP','DATE-OBS','DATE-END','PROCVER',\
                       'DEC_OBJ','PMRA','PMDEC','PMTOTAL','INSTRUME','PXTABLE','TESSMAG']
 tess_header_keys_b = ['BJDREFI','TIMEDEL','CROWDSAP','FLFRCSAP','PDCVAR']
 
-pg_header_keys = ['OBJECT','TICID','SECTOR','RA_OBJ','DEC_OBJ','TESSMAG',
-                  'CROWDSAP','BINNING','BINSIZE']
+pg_header_keys = ['TICID','SECTOR','RA_OBJ','DEC_OBJ','CAMERA','CCD','TIMEDEL',
+'TESSMAG','CROWDSAP','FLFRCSAP','PDCVAR','BINNING','BINSIZE','PIPELINE']
                   
 
 meta_keys_ls = ['RA_OBJ','DEC_OBJ','TICID','SECTOR',

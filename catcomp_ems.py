@@ -27,11 +27,12 @@ LOC = [('MW' in x) for x in cm['GAL']]
 #LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
 cm = cm[LOC]
 
-cm = cm[:3]
+#START FROM HD62623 - 126441970, CHECK RUNTIMEERROR IN RED NOISE FIT
+#cm = cm[2:3]
 #### QUERYING FROM MAST - SPOC LIGHTCURVES
 # 17/10/25 - last update
-#r=np.where(cm['STAR']=='LHA120-S89')[0][0]
-#cm = cm[r:]
+r=np.where(cm['STAR']=='V439 Cyg')[0][0]
+cm = cm[2:3]
 #mast_query(cm, download_dir='data/', product = "Lightcurve")
 
 
@@ -57,7 +58,7 @@ time_metrics = ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
 #fl = FitsList(cm)
 #fl.add_header_keys(key_dict={'HDUTYPE':'LIGHTCURVE'})
 #fl.remove_header_keys(keys = time_metrics)
-#fl.remove_hdu(hdutypes=['FREQUENCIES','LOMBSCARGLE'])
+#fl.remove_hdu(hdutypes=['FREQUENCIES','PERIODOGRAMS'])
 
 
 ##### TIME-DOMAIN MEASURES
@@ -66,8 +67,17 @@ time_metrics = ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
 #m.header_combine(mode = 'average', bin_size = '10m')
 
 ##### FREQUENCY DOMAIN EXTRACTION
-PGs = Extract(data=cm, plot_key='dmag', plot_name='m_ems', output_format='png')#, inter=True)
-PGs.periodograms(bin_size = '10m',maximum_frequency=40, term_sn = 3.5)
+#PGs = Extract(data=cm, 
+#              plot_name='ls_ems', 
+#              fig_xlabel = '', fig_ylabel = '', 
+#              figsize = (12,22),
+#              output_format='png')
+#PGs.periodograms(bin_size = '10m',
+                 #term_sn=3.9,
+#                 maximum_frequency=40)
+
+
+
 
 '''
 f = Features(data = cm)
