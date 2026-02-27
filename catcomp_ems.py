@@ -31,8 +31,8 @@ cm = cm[LOC]
 #cm = cm[2:3]
 #### QUERYING FROM MAST - SPOC LIGHTCURVES
 # 17/10/25 - last update
-r=np.where(cm['STAR']=='V439 Cyg')[0][0]
-cm = cm[2:3]
+#r=np.where(cm['STAR']=='V439 Cyg')[0][0]
+#cm = cm[1:3]
 #mast_query(cm, download_dir='data/', product = "Lightcurve")
 
 
@@ -52,19 +52,16 @@ cm = cm[2:3]
 # Lightcurve visualization
 #Visualize(data=cm, plot_name='EMS', plot_key='dmag', rows_page=7, cols_page=1,join_pages=False, output_format='png').lightcurves(stitched=True, bin_size = '10m')
 
-time_metrics = ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
+
+time_metrics = ['SKW','PSI','STD','IQR','ETA','MAD','ZCR']#,'MSE']
+frequency_metrics = ['TOP','HPR','WFM','WFD','SEN']
+rn_metrics = ['W0','R0','TAU','GAMMA']
 
 ##### RESETING - REMOVING
 #fl = FitsList(cm)
 #fl.add_header_keys(key_dict={'HDUTYPE':'LIGHTCURVE'})
-#fl.remove_header_keys(keys = time_metrics)
+#fl.remove_header_keys(keys = time_metrics+frequency_metrics)
 #fl.remove_hdu(hdutypes=['FREQUENCIES','PERIODOGRAMS'])
-
-
-##### TIME-DOMAIN MEASURES
-#m = TimeDomain(data = cm, measures = time_metrics)
-#m.calculate()
-#m.header_combine(mode = 'average', bin_size = '10m')
 
 ##### FREQUENCY DOMAIN EXTRACTION
 #PGs = Extract(data=cm, 
@@ -73,27 +70,31 @@ time_metrics = ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
 #              figsize = (12,22),
 #              output_format='png')
 #PGs.periodograms(bin_size = '10m',
-                 #term_sn=3.9,
+#                 term_sn=3.9,
 #                 maximum_frequency=40)
 
 
+##### TIME-DOMAIN MEASURES
+#td = TimeDomain(data = cm, measures = time_metrics)
+#td.calculate(bin_size = '10m')
+
+##### FREQUENCY-DOMAIN MEASURES
+#fd = FrequencyDomain(data = cm, measures = frequency_metrics)
+#fd.calculate(bin_size = '10m', min_freq = 2/27.)
 
 
-'''
+
 f = Features(data = cm)
-
-freq_metrics = ['F0','F1','F2','SNR0','A0','A1','A2',
-                'R10','R20','R11','R21','R12','R22']
-rn_metrics   = ['WHITE_0','RED_0','TAU_0','GAMMA_0',
-                'WHITE_1','RED_1','TAU_1','GAMMA_1']
 feats = f.get_from_sectors(
-    time_keys=time_metrics, 
-    freq_keys = freq_metrics,
+    time_keys = time_metrics, 
+    freq_keys = frequency_metrics,
     rn_keys = rn_metrics,
     meta_keys = ['TICID','SECTOR','BINSIZE','TESSMAG','CROWDSAP'],
-    save_output = 'features.csv')
+    save_output = 'features_ems.csv')
 
-
+plt.plot(feats['PSI'],np.log10(feats['IQR']),'.')
+#print(feats)
+'''
 #TO DO : CONVERT MASKED INPUT DATA TO NANS NOT ZEROS
 
 f.get_from_primary_headers(time_metrics + ['MINCROWD','AVECROWD'], update_table = True)

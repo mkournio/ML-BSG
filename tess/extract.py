@@ -4,7 +4,7 @@ import os
 from constants.io import *
 from methods.functions import *
 from methods.plot import *
-from methods.tools import FitsObject, get_fits_name
+from methods.tools import FitsObject, get_fits_name, get_lc_from_filename
 from astropy.io import fits
 from astropy import units as u
 import matplotlib.pyplot as plt
@@ -94,10 +94,6 @@ def fit_residuals(params, x, y, y_err = []):
 
     return  (model.flux - y)/y_err
 
-def lorentz(X,w,zero,tau,gamma):
-    
-    return w + ( zero / ( 1 + (2 * np.pi * tau * X)**gamma))
-
 def pg_model_params(mod_pg, mod_freq=None):
     
     if mod_freq == None:
@@ -113,43 +109,7 @@ def pg_model_params(mod_pg, mod_freq=None):
         theta[i] = np.sqrt((p[i]**2)+(p[i+1]**2))
         theta[i+1] = np.arctan2(p[i+1],p[i])
         
-    return theta   
-
-def get_lc_from_filename(f,**kwargs):
-    
-    if isinstance(f, lk.LightCurve):
-        lc = f.copy()
-        lc = lc.remove_nans()        
-    else:
-        if isinstance(f, fits.BinTableHDU):
-            lc = f.copy()
-            flux_key = kwargs.get('flux_key','dmag')
-            time = lc.data['time']
-            flux = lc.data[flux_key]
-            
-            try:
-                flux_err = lc.data[flux_key+'_err']                
-            except:
-                flux_err = np.zeros(len(time))
-                
-        else:
-            if isinstance(f,str) and f.endswith('txt'):
-                lc = np.genfromtxt(f,unpack=True)
-            elif (isinstance(f, np.ndarray)) or (isinstance(lc, list)):
-                lc = f.copy()                
-            else:
-                raise TypeError('Object light curve does not have supportive format!')
-      
-            time = lc[0]
-            flux = lc[1]
-            try:
-                flux_err = lc[2]
-            except:
-                flux_err = np.zeros(len(time))              
-            
-        lc = lk.LightCurve(time=time,flux=flux,flux_err=flux_err).remove_nans()
-
-    return lc  
+    return theta
 
 def get_metadata_from_tpf(tpf):
     
@@ -166,7 +126,6 @@ def get_metadata_from_tpf(tpf):
         pass
     
     return meta
-
 
 class Extract(GridTemplate):
     
@@ -380,8 +339,6 @@ class Extract(GridTemplate):
     def periodograms(self,
                      bin_size,
                      stitched = False,
-                     nterms = 3,
-                     prew = True,
                      **kwargs):
         
         if bin_size not in ['raw','10m','30m']:
@@ -415,8 +372,6 @@ class Extract(GridTemplate):
                       ax_ls = self.GridAx()                      
                       hdr = hdu.header
                       param, pg_tab, meta = self.lombscargle(hdu, 
-                                                         prew=prew, 
-                                                         nterms=nterms,
                                                          ax_lc = ax_lc,
                                                          ax_ls = ax_ls,
                                                         # save_output = True,   
@@ -682,6 +637,7 @@ class Extract(GridTemplate):
             term_sn = 3.9,
             opt_step = 1,
             opt_range = 0.1,
+            minimum_frequency = None,
             maximum_frequency = None,
             red_noise = True,
             show_plot = False,
@@ -718,10 +674,10 @@ class Extract(GridTemplate):
         params.add('nterms',nterms,vary=False)
         params.add('nmod',step,vary=False)
 
-        while step < nprew:
-            
+        while step < 100 :
             pg = prw_res.to_periodogram(ls_method=ls_method,
                                         nterms=nterms,
+                                        minimum_frequency=minimum_frequency,
                                         maximum_frequency=maximum_frequency)
             theta = pg_model_params(pg)
             n_m, n_std = noise_stats(pg,pg.frequency_at_max_power.value,sn_window,freq_mask)
@@ -754,7 +710,7 @@ class Extract(GridTemplate):
             else:
                 sn_val = max(pg.power)/n_std
                 
-            if sn_val < term_sn:                
+            if (sn_val < term_sn) or (step >= nprew):                
              
                 pg_tab.append(pg.power.value)               
 

@@ -371,6 +371,10 @@ def normalize(lc, deg = 2, flux_key ="pdcsap_flux", coeff = None):
 
 # TODO - make the following as static methods 
 
+def lorentz(X,w,zero,tau,gamma):
+    
+    return w + ( zero / ( 1 + (2 * np.pi * tau * X)**gamma))
+
 def get_std(flux):
     
     return np.std(flux)
@@ -459,7 +463,71 @@ def get_psi_sq(flux, kappa = 5):
     
     delta_gauss = np.append(d_gauss[0], np.diff(d_gauss))
     
-    return np.sum( ( (delta_star - delta_gauss)**2 ) / delta_gauss)	
+    return np.sum( ( (delta_star - delta_gauss)**2 ) / delta_gauss)
+
+def get_top(params):    
+  
+    amp_cols = [x for x in params.columns.names if 'amplitude_' in x]
+    
+    s = 0.
+    for c in amp_cols:
+        
+        s += np.nansum(params[c]**2)
+    
+    return s
+
+def get_hpr(params):
+    
+    amp_cols = [x for x in params.columns.names if 'amplitude_' in x]
+    harm_cols = [x for x in amp_cols if x != 'amplitude_1']
+    
+    if len(harm_cols) == 0:
+        
+        return 0.
+    
+    else:
+        
+        s = 0.
+        for c in harm_cols:
+            
+            s += np.nansum(params[c]**2)
+        
+        return s / np.nansum(params['amplitude_1']**2)
+
+def get_wfm(params):
+    
+    top = get_top(params)
+    amp_cols = [x for x in params.columns.names if 'amplitude_' in x]
+    int_mods = [int(x[-1:]) for x in amp_cols] 
+    
+    s = 0.
+    for c, m in zip(amp_cols,int_mods):
+        
+        s += np.nansum((params[c]**2) * m * params['frequency'])
+    
+    return s / top
+
+def get_wfd(params):
+    
+    wfm = get_wfm(params)
+    top = get_top(params)
+    
+    amp_cols = [x for x in params.columns.names if 'amplitude_' in x]
+    int_mods = [int(x[-1:]) for x in amp_cols] 
+    
+    s = 0. 
+    for c, m in zip(amp_cols,int_mods):
+        
+        s += np.nansum( (params[c]**2) * ((m * params['frequency']) - wfm)**2)
+        
+    return np.sqrt( s / top )
+
+def get_sen(spec):
+    
+    p = spec / np.nansum(spec)    
+    sen = - np.nansum( p * np.log(p) )  
+    
+    return sen / np.log(len(p))
 
 def save_two_col(x,y,filename):
 

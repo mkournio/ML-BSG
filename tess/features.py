@@ -115,7 +115,7 @@ class Features(object):
                     r_values = np.full(len(rn_keys), np.nan)
                     meta_values = np.full(len(meta_keys), np.nan, dtype='object')                    
                         
-                    hdu = get_hdu_from_keys(ff, SECTOR = s, TTYPE2 = 'flux', BINSIZE = str(bin_size))[0] 
+                    hdu = get_hdu_from_keys(ff, SECTOR = s, HDUTYPE = 'LIGHTCURVE', BINSIZE = str(bin_size))[0] 
                     hdr = hdu.header                    
                     if len(meta_keys) != 0:
                         for k_index, k in enumerate(meta_keys):                            
@@ -126,40 +126,16 @@ class Features(object):
                             if k in hdr:
                                 t_values[k_index] = hdr[k]
                                 
+                    hdu_f = get_hdu_from_keys(ff, SECTOR = s, HDUTYPE = 'FREQUENCIES', BINSIZE = str(bin_size))[0]
+                    hdr = hdu_f.header                                 
                     if len(freq_keys) != 0:
-                        
-                        hdu_f = get_hdu_from_keys(ff, SECTOR = s, HDUTYPE = 'FREQUENCIES', BINSIZE = str(bin_size))[0]
-                        fdata = hdu_f.data                        
                         for k_index, k in enumerate(freq_keys):
-                            if 'F' in k:
-                                try:
-                                    f_values[k_index]=fdata[int(k[1:])]['frequency']
-                                except:
-                                    pass
-                            elif 'SNR' in k:
-                                try:
-                                    f_values[k_index]=fdata[int(k[3:])]['snr']
-                                except:
-                                    pass
-                            elif 'A' in k:
-                                try:
-                                    f_values[k_index]=fdata[int(k[1:])]['amplitude_0']  
-                                except:
-                                    pass
-                            elif 'R' in k:
-                                try:
-                                    f = fdata[int(k[2:])]                                
-                                    f_values[k_index]=f['amplitude_%s' % k[1]] / f['amplitude_0']
-                                except:
-                                    pass  
-                                
-                    if len(rn_keys) != 0:
-                        
-                        hdu_r = get_hdu_from_keys(ff, SECTOR = s, HDUTYPE = 'LOMBSCARGLE', BINSIZE = str(bin_size))[0]
-                        hdr = hdu_r.header                        
-                        for k_index, k in enumerate(rn_keys):                            
                             if k in hdr:
-                                r_values[k_index] = hdr[k]
+                                f_values[k_index] = hdr[k]                                
+                    if len(rn_keys) != 0:
+                        rn_model = hdu_f.data[-1]
+                        for k_index, k in enumerate(rn_keys):                            
+                                r_values[k_index] = rn_model[k]
                                 
                     sect_values = np.concatenate(([star],meta_values,t_values,f_values,r_values), axis=0)
                     array.append(sect_values)

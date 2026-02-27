@@ -78,6 +78,42 @@ def get_fits_name(star,tic):
     
     return os.path.join(path_to_output_fits,'{}_{}.fits'.format(star,tic))
 
+def get_lc_from_filename(f, **kwargs):
+    
+    if isinstance(f, lk.LightCurve):
+        lc = f.copy()
+        lc = lc.remove_nans()        
+    else:
+        if isinstance(f, fits.BinTableHDU):
+            lc = f.copy()
+            flux_key = kwargs.get('flux_key','dmag')
+            time = lc.data['time']
+            flux = lc.data[flux_key]
+            
+            try:
+                flux_err = lc.data[flux_key+'_err']                
+            except:
+                flux_err = np.zeros(len(time))
+                
+        else:
+            if isinstance(f,str) and f.endswith('txt'):
+                lc = np.genfromtxt(f,unpack=True)
+            elif (isinstance(f, np.ndarray)) or (isinstance(lc, list)):
+                lc = f.copy()                
+            else:
+                raise TypeError('Object light curve does not have supportive format!')
+      
+            time = lc[0]
+            flux = lc[1]
+            try:
+                flux_err = lc[2]
+            except:
+                flux_err = np.zeros(len(time))              
+            
+        lc = lk.LightCurve(time=time,flux=flux,flux_err=flux_err).remove_nans()
+
+    return lc  
+
 class FitsManager(object):
     
     def __init__(self, hdulist):

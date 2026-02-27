@@ -35,13 +35,22 @@ class TimeDomain(object):
     def _validate(self):
         pass
     
-    def calculate(self, stitched = False, **kwargs):
+    def calculate(self, 
+                  bin_size, 
+                  stitched = False, 
+                  **kwargs):
  
         if len(self.measures) == 0:
             return
         
-        print('Calculating the time-domain metrics: {}'.format(self.measures))
-        
+        if bin_size not in ['raw','10m','30m']:
+            raise Exception('Set bin_size among raw, 10m, 30m. Aborting..')
+      
+        if bin_size == '10m':
+            bin_size_d = 0.00694
+        elif bin_size == '30m':
+            bin_size_d = 0.02083        
+       
         stars = self.data['STAR']
         tics = self.data['TIC']        
         for star, tic in zip(stars,tics):
@@ -50,9 +59,12 @@ class TimeDomain(object):
             if len(filename) > 0 :
                 
                 ff = fits.open(os.path.join(path_to_output_fits,filename[0]))
-                for hdu in ff[1:]:
+                hdus = get_hdu_from_keys(ff[1:], HDUTYPE = 'LIGHTCURVE', BINSIZE = str(bin_size_d))
+                print(f'Extracting TD metrics for {star} - {tic}')
+
+                for hdu in hdus:
                     
-                    values = self.single_lc(hdu,self.measures)
+                    values = self.td_lc(hdu,self.measures)
                     
                     for m, v in zip(self.measures,values):
                         if np.isnan(v): 
@@ -60,6 +72,7 @@ class TimeDomain(object):
                         hdu.header[m] = v
                         
                 ff.writeto(os.path.join(path_to_output_fits,filename[0]), overwrite=True)
+                
                 ff.close()
                 
         return
@@ -133,61 +146,34 @@ class TimeDomain(object):
         return     
            
     @staticmethod
-    def single_lc(f, measures, flux_key = 'dmag'):
+    def td_lc(f, measures, flux_key = 'dmag'):
         
-        lc = f.copy()
-        
-        if isinstance(lc, lk.LightCurve):
-            time = lc.time.value
-            flux = lc[flux_key].value
-            try:
-                flux_err = lc[flux_key+"_err"].value
-            except:
-                flux_err = np.zeros(len(flux))                
-        elif isinstance(lc, fits.BinTableHDU):
-            time = lc.data['time']
-            flux = lc.data[flux_key]
-            try:
-                flux_err = lc.data[flux_key+"_err"]
-            except:
-                flux_err = np.zeros(len(flux))                 
-        elif isinstance(lc, np.ndarray):
-            time = lc[0]
-            flux = lc[1]
-            if lc.shape[0] > 2:
-                flux_err = lc[2]
-            else:
-                flux_err = np.zeros(len(flux))                
-        else:
-            raise TypeError('Object light curve does not have supportive format!')
-            
-        nan_mask = np.isnan(flux)
-        flux = flux[~nan_mask]        
-        flux = flux[20:-20]
+        lc = get_lc_from_filename(f, flux_key = flux_key)
+        lc = lc.remove_outliers(sigma=3.)
         
         mval = np.full(len(measures), np.nan)
         
-        if 'MSP' in measures:
-            msp, msd, msc, mss = get_mse(flux)
+       # if 'MSP' in measures:
+        #    msp, msd, msc, mss = get_mse(lc.flux)
 
         for i, m in enumerate(measures):
             
             if m == 'STD':
-                mval[i] = get_std(flux)
+                mval[i] = get_std(lc.flux)
             elif m == 'MAD':
-                mval[i] = get_mad(flux)
+                mval[i] = get_mad(lc.flux)
             elif m == 'IQR':
-                mval[i] = get_iqr(flux)
+                mval[i] = get_iqr(lc.flux)
             elif m == 'SKW':
-                mval[i] = get_skew(flux)
+                mval[i] = get_skew(lc.flux)
             elif m == 'KRT':
-                mval[i] = get_kurt(flux)
+                mval[i] = get_kurt(lc.flux)
             elif m == 'ZCR':
-                mval[i] = k_cross(flux, kappa = 1)[0]
+                mval[i] = k_cross(lc.flux, kappa = 1)[0]
             elif m == 'ETA':
-                mval[i] = get_eta(flux)
+                mval[i] = get_eta(lc.flux)
             elif m == 'PSI':
-                mval[i] = get_psi_sq(flux)
+                mval[i] = get_psi_sq(lc.flux)
             elif m == 'MSP':
                 mval[i] = msp
             elif m == 'MSD':
@@ -203,13 +189,100 @@ class FrequencyDomain(object):
     
     def __init__(self,
                  data,
+                 measures,
                  **kwargs):
         
         self.data = data.copy()
-        self.validate()
+        self.measures = measures
+        self._validate()
         
         return
     
     def _validate(self):
         
         pass
+    
+    def calculate(self, 
+                  bin_size, 
+                  min_freq = 2/27.,
+                  stitched = False, 
+                  **kwargs):
+ 
+        if len(self.measures) == 0:
+            return
+        
+        if bin_size not in ['raw','10m','30m']:
+            raise Exception('Set bin_size among raw, 10m, 30m. Aborting..')
+      
+        if bin_size == '10m':
+            bin_size_d = 0.00694
+        elif bin_size == '30m':
+            bin_size_d = 0.02083        
+       
+        stars = self.data['STAR']
+        tics = self.data['TIC']        
+        for star, tic in zip(stars,tics):
+            
+            filename = [f for f in os.listdir(path_to_output_fits) if star in f]
+            if len(filename) > 0 :
+                
+                ff = fits.open(os.path.join(path_to_output_fits,filename[0]))
+                hdus = get_hdu_from_keys(ff[1:], HDUTYPE = 'FREQUENCIES', BINSIZE = str(bin_size_d))
+                print(f'Extracting FD metrics for {star} - {tic}')
+
+                for hdu in hdus:
+                    
+                    values = self.fd_lc(hdu,self.measures, min_freq = min_freq)
+                    
+                    for m, v in zip(self.measures,values):
+                        
+                        if m == 'SEN':
+                            
+                            hdu_per = get_hdu_from_keys(ff[1:], 
+                                                        SECTOR = hdu.header['SECTOR'],
+                                                        HDUTYPE = 'PERIODOGRAMS', 
+                                                        BINSIZE = str(bin_size_d))                            
+                            if len(hdu_per) > 0:
+                                pg = hdu_per[0].data
+                                pg = pg[ pg['frequency'] >= min_freq ]
+
+                                act_m = hdu.data[-1]
+                                rn_prop = [act_m['W0'],act_m['R0'],act_m['TAU'],act_m['GAMMA']]
+                                snr_spectrum = pg['ampl_ini'] / lorentz(pg['frequency'], *rn_prop)
+                                v = get_sen(snr_spectrum**2)
+                            
+                        if np.isnan(v): 
+                            v = None
+                            
+                        hdu.header[m] = v
+                       
+                ff.writeto(os.path.join(path_to_output_fits,filename[0]), overwrite=True)
+               
+                ff.close()
+                
+        return
+    
+    @staticmethod
+    def fd_lc(f, measures, min_freq = 2/27., flux_key = 'dmag'):
+        
+        if isinstance(f, fits.BinTableHDU):
+            data = f.data.copy()
+        else:
+            return
+        
+        data = data[data['frequency'] >= min_freq]
+
+        mval = np.full(len(measures), np.nan)
+
+        for i, m in enumerate(measures):
+            
+            if m == 'TOP':
+                mval[i] = get_top(data)
+            elif m == 'HPR':
+                mval[i] = get_hpr(data)
+            elif m == 'WFM':
+                mval[i] = get_wfm(data)
+            elif m == 'WFD':
+                mval[i] = get_wfd(data)
+                
+        return mval 
