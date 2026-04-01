@@ -104,7 +104,7 @@ class Visualize(GridTemplate):
                                            lower_right='{} ({})'.format(tic,sect))
                          
                 log_file.write('{:30s} {:+.8f} {:+.8f} {:10s} {} {}\n'.format(star,l['RA'],l['DEC'],spc,tic,get_filename(self.filename,self.output_format)))
-                
+
         self.close_plot()
         log_file.close()
         

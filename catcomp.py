@@ -7,31 +7,79 @@ from astroquery.simbad import Simbad
 #from evolution import *
 import os
 from astropy.coordinates import SkyCoord
+from astropy import units as u
+
 from constants import *
 import pandas as pd
 from tess import *
 import numpy as np
 from astropy.io import ascii
+from filters import *
 
 #xc = PreProcess(args).compile()
 #GDW =  [(not any(y in x for y in ('III','V','O9','A0','A1','A2','A3','ON','OC'))) or ('LBV' in x) for x in xc['SpC']]
 #xc = xc[GDW]
-#cm = PostProcess(xc).xmatch().append('combined').write_to_csv('input_sample')
+#cm = PostProcess(xc).xmatch().append('combined').write_to_csv('input_sample_ems')
 cm = ascii.read('input_sample')
 cm.sort(['RA'])
 
+#Filters.EMS(cm)
+
+#print(cm['SpC'])
 # FILTERING THE SAMPLE
-#EMS = [('LBV' in x) or ('B[e]SG' in x) for x in cm['SpC']]
+#EMS = [('LBV' in x) or ('B[e]SG' in x) or ('YHG' in x) for x in cm['SpC']]
+#EMS = [('B[e]SG' in x) for x in cm['SpC']]
 #cm = cm[EMS]
-LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
+
+#LOC = [('MW' in x) for x in cm['GAL']]
+#LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
+#cm = cm[LOC]
+
+#### FILTER FOR PLATO
+LOC = [('MW' in x) for x in cm['GAL']]
 cm = cm[LOC]
+
+plato_center = SkyCoord(ra=95.3104 * u.deg, dec=-47.8869 * u.deg, frame='icrs')
+bsg_coords=SkyCoord(ra=cm['RA'],dec=cm['DEC'],unit=(u.deg,u.deg), frame='icrs')
+bsg_sep = plato_center.separation(bsg_coords).deg
+plato = bsg_sep < 24.5
+cm = cm[plato]
+
+cols = ['STAR','RA','DEC','SpC',
+        'BPmag','Gmag','RPmag','e_BPmag','e_Gmag','e_RPmag','RUWE',
+        'GDIST','e_GDIST','E_GDIST','MG','MJ','MK']
+
 cm = cm[(cm['MK']<-2.5)]
-cm = cm[:3]
+
+
+cm.sort(['SpC'])
+
+print(cm['STAR','SpC'])
+Visualize(data=cm, plot_name='plato_bsgs_x', plot_key='dmag', rows_page=7, cols_page=1,join_pages=False, output_format='png').lightcurves(stitched=True, bin_size = '10m')
+#cm[cols].write('plato_bsg.csv', format='ascii', delimiter=',', overwrite=True)
+
+#####################
+
+
+#print(cm['STAR','SpC','GAL','RA','DEC','Gmag',].pprint(max_lines=-1,max_width=-1))
+#ra_c,dec_c = np.genfromtxt('casleo_mat2',delimiter=',',unpack=True,usecols=(0,1),comments='#')
+#print(ra_c)
+#mask = [float('%.4f'% x) in ra_c for x in cm['RA']] 
+#cm = cm[mask]
+#print(cm['STAR','RA','DEC','SpC','GAL','Gmag','CROWDSAP'].pprint(max_lines=-1,max_width=-1))
+#Visualize(data=cm, plot_name='MATIAS', plot_key='dmag', rows_page=7, cols_page=1,join_pages=False, output_format='png').lightcurves(stitched=True, bin_size = '10m')
+#################
+
+#print(cm)
+
+'''
+#cm = cm[(cm['MK']<-2.5)]
+#cm = cm[:5]
 #### QUERYING FROM MAST - SPOC LIGHTCURVES
 # 17/10/25 - last update
-#r=np.where(cm['STAR']=='HD191396')[0][0]
-#cm = cm[r:]
-#mast_query(cm, download_dir='data/', products = ["Lightcurve"])
+r=np.where(cm['STAR']=='Hen3-298')[0][0]
+cm = cm[r:r+1]
+#mast_query(cm, download_dir='data/', product = "Lightcurve")
 
 
 #### FILTER FOR CASLEO 2026A PROPOSAL
@@ -46,21 +94,26 @@ cm = cm[:3]
 #mask = [float('%.4f'% x) in ra_c for x in cm['RA']] 
 #cm = cm[mask]
 #####################################
-
+#print(cm['RA','DEC','STAR'].pprint(max_lines=-1,max_width=-1))
  
+
 #print(cm.columns)
-#print(cm['STAR','TEFF','SLOGL'].pprint(max_lines=-1,max_width=-1))
+#print(cm['STAR','SpC','TEFF','MK'].pprint(max_lines=-1,max_width=-1))
 
 #18/10 stop: MASSJ05045052-7038229: extracted Sector s0027 of TIC 31006657 (SPOC)
-#r=np.where(cm['STAR']=='HD269927')[0][0]
-#print(r)
+#r=np.where(cm['STAR']=='HD160529')[0][0];  print(r)
 #cm = cm[r:]
 # LIGHTVURVE EXTRACTION - FITS CREATION
-#LCs = Extract(data=cm, plot_key='dmag', plot_name='x_bsgs', output_format='png')#, inter=True)
-#LCs.header_key(key='NAXIS2')
-#LCs.lightcurves(time_bin = [0.00694,0.02083], save_fits = True, extract_field = False)
+LCs = Extract(data=cm, plot_key='dmag', plot_name='test', output_format='png')#, inter=True)
+#LCs.header_key(key='TIMEDEL')
+LCs.lightcurves(time_bin = [0.00694,0.02083], save_fits = True)
 
-#fl = FitsList(cm).remove_hdu(hdutypes=['FREQUENCIES','LOMBSCARGLE'])
+
+# Lightcurve visualization
+Visualize(data=cm, plot_name='EMS2', plot_key='dmag', rows_page=7, cols_page=1,join_pages=False, output_format='png').lightcurves(stitched=True, bin_size = '30m')
+
+
+#FitsList(cm).remove_hdu(hdutypes=['FREQUENCIES','LOMBSCARGLE'])
 #PGs = Extract(data=cm, plot_key='dmag', plot_name='p_bsgs', output_format='png')#, inter=True)
 #PGs.periodograms(bin_size = '10m', prew=True, nterms=3)
 
@@ -82,10 +135,24 @@ f = Features(data = cm)
 
 #TO DO : CONVERT MASKED INPUT DATA TO NANS NOT ZEROS
 
-#f.get_from_primary_headers(time_metrics + ['MINCROWD','AVECROWD'], update_table = False)
-feats = f.get_from_sectors(time_keys=time_metrics, freq_keys = freq_metrics, rn_keys = rn_metrics, stitch_input=True)
+f.get_from_primary_headers(time_metrics + ['MINCROWD','AVECROWD'], update_table = True)
+ptab = cm['STAR','MK','RA','DEC','TIC','AVECROWD',
+               'JK','BR','RUWE',
+               'TEFF','e_TEFF','SLOGL',
+               'IQR','e_IQR','PSI','e_PSI','SKW','e_SKW','ZCR','e_ZCR',
+               'MSP','e_MSP','MSD','e_MSD','MSC','e_MSC','MSS','e_MSS','GAL','SpC']
+print(ptab)
+#print(ptab.pprint(max_lines=-1,max_width=-1))
 
-print(feats)
+
+feats = f.get_from_sectors(
+    time_keys=time_metrics, 
+    freq_keys = freq_metrics,
+    rn_keys = rn_metrics,
+    meta_keys = ['TICID','SECTOR','BINSIZE','TESSMAG','CROWDSAP'],
+    save_output = 'features.csv')
+
+#print(feats.pprint(max_lines=-1,max_width=-1))
 #print_tab = cm['STAR','RA','DEC','GAL','SpC','TIC','AVECROWD',
 #               'MK','JK','BR','RUWE',
  #              'TEFF','e_TEFF','SLOGL',
@@ -93,9 +160,9 @@ print(feats)
    #            'MSP','e_MSP','MSD','e_MSD','MSC','e_MSC','MSS','e_MSS']
 #print(print_tab)
 #print(ptab.pprint(max_lines=-1,max_width=-1))
-#tab_to_csv(print_tab,output='ftab_10m.csv')
+#tab_to_csv(print_tab,filename='ftab_10m.csv')
 
-'''
+
 plot_kwargs = {'invert': ['MK'], 'cbar': ['AVECROWD', 0.79, 1], 'alpha': ['AVECROWD', 0.75, 0.85, 0.95],
                'output_format': None, 'inter': True}
 
@@ -120,9 +187,6 @@ f.scatter_plot(x = ['MK', 'TEFF','SLOGL'],
 #print(cm[('STAR','TEFF',) + metrics].pprint(max_lines=-1,max_width=-1))
 #print(cm.columns)
 
-#cm = cm[:20]
-# SPOC LCs VISUALIZATION
-#Visualize(data=cm, plot_name='BSGs', plot_key='dmag', rows_page=7, cols_page=1,join_pages=False, output_format='png').lightcurves(stitched=True, bin_size = '10m')
 
 
 #LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]

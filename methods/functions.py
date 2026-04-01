@@ -403,32 +403,33 @@ def get_kurt(flux):
     
     return stats.kurtosis(flux)
 
-def get_mse(flux, m = 2, tau = 15, tol = 0.2):
+def get_mse(flux, m = 2, tau = 12, tol = 0.2):
+    
+    flux = np.array(flux)
     
     if len(flux) > 40000:
         
-        return  np.full(4, np.nan)
+        return  np.full(4, np.nan)    
+
+    Mobj = EH.MSobject('SampEn', m = m, Logx = np.exp(1), 
+                       r = tol * np.nanstd(flux), Vcp = False)
+    mse = EH.MSEn(flux, Mobj, Scales = tau, Methodx = 'coarse', 
+                  RadNew = 0, Plotx = False)    
         
-    Mobj = EH.MSobject('SampEn', m = m, r = tol * np.nanstd(flux), Logx = np.exp(1), Vcp = False)
-    mse = EH.MSEn(flux, Mobj, Scales = tau, Methodx = 'coarse', RadNew = 0, Plotx = False)
-    
     msx = np.arange(1,tau+1,1)
-    msy = mse[0]
+    msy = mse[0]    
     
     idx = np.isfinite(msx) & np.isfinite(msy)
     msx = msx[idx]
     msy = msy[idx]
     
-    std = get_std(msy)
     z2 = np.polyfit(msx,msy,deg=2)
-    z1 = np.polyfit(msx,msy,deg=1)
+    f2 = np.poly1d(z2)
     
-    #f2 = np.poly1d(z2)
-    #f1 = np.poly1d(z1)
+    #plt.plot(msx,msy,'o')
     #plt.plot(msx,f2(msx))
-    #plt.plot(msx,f1(msx))
-    
-    return  np.mean(msy**2), std, 2*z2[0], z1[0]
+
+    return  np.nanmean(msy**2), (msy[-1]-msy[0]) / tau, z2[0]
 
 def k_cross(flux, kappa = 5):
     
@@ -465,17 +466,6 @@ def get_psi_sq(flux, kappa = 5):
     
     return np.sum( ( (delta_star - delta_gauss)**2 ) / delta_gauss)
 
-def get_top(params):    
-  
-    amp_cols = [x for x in params.columns.names if 'amplitude_' in x]
-    
-    s = 0.
-    for c in amp_cols:
-        
-        s += np.nansum(params[c]**2)
-    
-    return s
-
 def get_hpr(params):
     
     amp_cols = [x for x in params.columns.names if 'amplitude_' in x]
@@ -494,31 +484,48 @@ def get_hpr(params):
         
         return s / np.nansum(params['amplitude_1']**2)
 
-def get_wfm(params):
-    
-    top = get_top(params)
+def get_top(params, minf = 0.):    
+  
     amp_cols = [x for x in params.columns.names if 'amplitude_' in x]
-    int_mods = [int(x[-1:]) for x in amp_cols] 
     
     s = 0.
-    for c, m in zip(amp_cols,int_mods):
+    for c in amp_cols:
         
-        s += np.nansum((params[c]**2) * m * params['frequency'])
+        f = int(c[-1:]) * params['frequency']
+        mask = f > minf
+        
+        s += np.nansum(params[c][mask]**2)
+    
+    return s
+
+def get_wfm(params, minf = 0.):
+    
+    top = get_top(params, minf = minf)
+    amp_cols = [x for x in params.columns.names if 'amplitude_' in x]
+    
+    s = 0.
+    for c in amp_cols: 
+        
+        f = int(c[-1:]) * params['frequency']
+        mask = f > minf
+
+        s += np.nansum((params[c][mask]**2) * f[mask])
     
     return s / top
 
-def get_wfd(params):
+def get_wfd(params, minf = 0.):
     
-    wfm = get_wfm(params)
-    top = get_top(params)
-    
+    wfm = get_wfm(params, minf = minf)
+    top = get_top(params, minf = minf)    
     amp_cols = [x for x in params.columns.names if 'amplitude_' in x]
-    int_mods = [int(x[-1:]) for x in amp_cols] 
     
     s = 0. 
-    for c, m in zip(amp_cols,int_mods):
+    for c in amp_cols:
         
-        s += np.nansum( (params[c]**2) * ((m * params['frequency']) - wfm)**2)
+        f = int(c[-1:]) * params['frequency']
+        mask = f > minf
+        
+        s += np.nansum( (params[c][mask]**2) * (f[mask] - wfm)**2 )
         
     return np.sqrt( s / top )
 

@@ -273,6 +273,7 @@ class FitsObject(object):
            
        coldefs = fits.ColDefs(cols)
        hdu = fits.BinTableHDU.from_columns(coldefs) 
+       hdu.header['HDUTYPE'] = 'LIGHTCURVE'
 
        if header_source is not None:
            hdu.header = self._create_header_from_original(hdu.header,header_source)
@@ -462,6 +463,9 @@ class FitsList(object):
             
             return 
         
+        if 'MSE' in keys:
+            keys += ['MSE0','MSE1','MSE2']
+            
         print('Removing keys from headers..')
         
         ltab = self.tab       

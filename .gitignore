@@ -30,4 +30,8 @@ log_vis
 
 *.ipynb
 
+*.csv
+
+plato/
+
 input_sample

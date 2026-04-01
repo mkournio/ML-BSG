@@ -183,8 +183,13 @@ class Extract(GridTemplate):
       #   print(star,tic,spoc_files,sec_spoc)
        #  print(star,tic,tspoc_files,sec_tspoc)
          
-         if ((len(spoc_files) > 0) or (len(tspoc_files) > 0)) and kwargs.get('save_fits'):
-                 self.ff = FitsObject(get_fits_name(star,tic))                 
+         if ((len(spoc_files) > 0) or (len(tspoc_files) > 0)) and kwargs.get('save_fits'):         
+                 fits_path = get_fits_name(star,tic)                 
+                 if not os.path. exists(fits_path):
+                    self.ff = FitsObject(fits_path)
+                 else:
+                    print(f'Fits file for {star} - TIC{tic} exists.')
+                    continue          
        
          for sect in sect_all:             
              
@@ -194,6 +199,8 @@ class Extract(GridTemplate):
 
              if len(spoc_f) > 0:
                  path_to_input_file = os.path.join(path_to_spoc_files, spoc_f[0], spoc_f[0]+'_lc.fits')
+                 if 'a_fast' in spoc_f[0]:
+                    path_to_input_file = os.path.join(path_to_spoc_files, spoc_f[0], spoc_f[0]+'-lc.fits')
                  ax_lc = self._extract_lc(path_to_input_file, time_bin, **kwargs)
                  print('{}: extracted Sector {} of TIC {} (SPOC)'.format(star,sect,tic))
              elif (len(tspoc_f) > 0) and (mode == 'ALL'):

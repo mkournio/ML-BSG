@@ -2,12 +2,15 @@ import numpy as np
 from methods import *
 
 # INITIAL CATALOGS TO COMBILE FROM SORTED BY PREFERENCE IN DOUBLE ENTRIES
-INI_CATS = ['EMS','SIMBAD-LBVs','deBURGOS+24','WESMAYER+22','SEARLE+08','McERLEAN+99','CROWTHER+06','FIRNSTEIN+12', 'HAUCKE+19','SIMBAD-BSGs']
+#INI_CATS = ['EMS','SIMBAD-ASGs','EMS','deBURGOS+24','WESMAYER+22','SEARLE+08','McERLEAN+99','CROWTHER+06','FIRNSTEIN+12', 'HAUCKE+19','SIMBAD-BSGs']
+INI_CATS = ['EMS']
+
         
 XM_CATS = {
           'vizier:IV/38/tic' : ['TIC','Tmag'],
           'vizier:I/352/gedr3dis' : ['rpgeo','b_rpgeo','B_rpgeo'],
           'vizier:I/311/hip2' : ['Plx','e_Plx'],
+          'vizier:J/MNRAS/504/2968/tablea1' : ['DistMode','DistBJ'],
           'vizier:I/355/gaiadr3' : ['BPmag','Gmag','RPmag','e_BPmag','e_Gmag','e_RPmag','RUWE'],
           'vizier:II/246/out' : ['Jmag','Hmag','Kmag','e_Jmag','e_Hmag','e_Kmag'],
           'vizier:II/328/allwise' : ['W1mag','W2mag','W3mag','W4mag','e_W1mag','e_W2mag','e_W3mag','e_W4mag']
@@ -41,6 +44,7 @@ APPEND_COLS= {
           'deBURGOS+24' : {'REF': 'D24', 'GAL': 'MW', **meancol('e_TEFF', 'e_LOGG', keys=[['e_TEFF','E_TEFF'],['e_LOGG','E_LOGG']])},
           'vizier:I/311/hip2' : {'HDIST': lambda x: 1./(1e-3*x['Plx'])},
           'SIMBAD-BSGs': {'REF': 'SMB'},
+          'SIMBAD-ASGs': {'REF': 'SMA'},
           'SIMBAD-LBVs': {'REF': 'SMB', **galloc('GAL',keys=['RA','DEC'])},
           'combined': {
                       **galcoord('GLON','GLAT',keys=['RA','DEC']),

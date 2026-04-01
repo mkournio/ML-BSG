@@ -18,8 +18,7 @@ from astropy.io import ascii
 #xc = xc[GDW]
 #cm = PostProcess(xc).xmatch().append('combined').write_to_csv('input_sample_ems')
 cm = ascii.read('input_sample_ems')
-#cm.sort(['RA'])
-
+cm.sort(['RA'])
 
 
 # FILTERING THE SAMPLE
@@ -28,11 +27,11 @@ LOC = [('MW' in x) for x in cm['GAL']]
 cm = cm[LOC]
 
 #START FROM HD62623 - 126441970, CHECK RUNTIMEERROR IN RED NOISE FIT
-#cm = cm[2:3]
+#cm = cm[1:2]
 #### QUERYING FROM MAST - SPOC LIGHTCURVES
 # 17/10/25 - last update
-#r=np.where(cm['STAR']=='V439 Cyg')[0][0]
-#cm = cm[1:3]
+#r=np.where(cm['STAR']=='HD87643')[0][0]
+#cm = cm[r:r+1]
 #mast_query(cm, download_dir='data/', product = "Lightcurve")
 
 
@@ -41,31 +40,30 @@ cm = cm[LOC]
 #print(cm['STAR','SpC','TEFF','MK'].pprint(max_lines=-1,max_width=-1))
 
 #18/10 stop: MASSJ05045052-7038229: extracted Sector s0027 of TIC 31006657 (SPOC)
-#r=np.where(cm['STAR']=='HD160529')[0][0];  print(r)
-#cm = cm[r:]
+#r=np.where(cm['STAR']=='IRC+10420')[0][0];  print(r)
+#cm = cm[r:r+1]
 
 # LIGHTVURVE EXTRACTION - FITS CREATION
-#LCs = Extract(data=cm, plot_key='dmag', plot_name='x_ems', output_format='png')#, inter=True)
-#LCs.header_key(key='TIMEDEL')
+#LCs = Extract(data=cm, plot_key='dmag', plot_name='x_ems_extra', output_format='png')
 #LCs.lightcurves(time_bin = [0.00694,0.02083], save_fits = True, extract_field = False)
 
 # Lightcurve visualization
 #Visualize(data=cm, plot_name='EMS', plot_key='dmag', rows_page=7, cols_page=1,join_pages=False, output_format='png').lightcurves(stitched=True, bin_size = '10m')
 
 
-time_metrics = ['SKW','PSI','STD','IQR','ETA','MAD','ZCR']#,'MSE']
+time_metrics = ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
 frequency_metrics = ['TOP','HPR','WFM','WFD','SEN']
 rn_metrics = ['W0','R0','TAU','GAMMA']
 
 ##### RESETING - REMOVING
 #fl = FitsList(cm)
 #fl.add_header_keys(key_dict={'HDUTYPE':'LIGHTCURVE'})
-#fl.remove_header_keys(keys = time_metrics+frequency_metrics)
+#fl.remove_header_keys(keys = frequency_metrics)
 #fl.remove_hdu(hdutypes=['FREQUENCIES','PERIODOGRAMS'])
 
 ##### FREQUENCY DOMAIN EXTRACTION
 #PGs = Extract(data=cm, 
-#              plot_name='ls_ems', 
+#              plot_name='ls_ems_extra', 
 #              fig_xlabel = '', fig_ylabel = '', 
 #              figsize = (12,22),
 #              output_format='png')
@@ -75,25 +73,51 @@ rn_metrics = ['W0','R0','TAU','GAMMA']
 
 
 ##### TIME-DOMAIN MEASURES
-#td = TimeDomain(data = cm, measures = time_metrics)
-#td.calculate(bin_size = '10m')
+#td = TimeDomain(data = cm, measures = time_metrics).calculate(bin_size = '10m')
 
 ##### FREQUENCY-DOMAIN MEASURES
-#fd = FrequencyDomain(data = cm, measures = frequency_metrics)
-#fd.calculate(bin_size = '10m', min_freq = 2/27.)
+#fd = FrequencyDomain(data = cm, measures = frequency_metrics).calculate(bin_size = '10m', min_freq = 2/27.)
 
 
+meta_keys = ['STAR','TIC','TEFF','LOGL','JK','MJ','MG','SpC']
+if 'MSE' in time_metrics:
+    m_ind = time_metrics.index('MSE')
+    time_metrics[m_ind:m_ind+1] = ['MSE0','MSE1','MSE2']
 
-f = Features(data = cm)
-feats = f.get_from_sectors(
-    time_keys = time_metrics, 
+feats = Features()
+feats.get_from_sectors(
+    input_cat = cm,
+    time_keys = time_metrics + ['SECTOR','BINSIZE'], 
     freq_keys = frequency_metrics,
     rn_keys = rn_metrics,
-    meta_keys = ['TICID','SECTOR','BINSIZE','TESSMAG','CROWDSAP'],
-    save_output = 'features_ems.csv')
+    meta_keys = meta_keys,
+    log_convert = ['IQR','PSI','R0'],
+    save_output = 'features_ems_2.csv')
+    
+feats._aggregate(cols = rn_metrics+time_metrics+frequency_metrics,
+                     group_by = ['STAR','SpC','TIC'],
+                     save_output = 'features_aggr.csv') 
+  
+#feats.pair_plot(plot_cols = ['IQR','PSI','SKW','MSE0','MSE1'],
+#                hue = 'SpC')
+#feats.pair_plot(plot_cols = ['WFM','WFD','R0','GAMMA','TAU'],
+#                hue = 'SpC')
 
-plt.plot(feats['PSI'],np.log10(feats['IQR']),'.')
+feats.umap_plot(var_cols= ['IQR','PSI',
+                            'R0','TAU','GAMMA',
+                            'WFM','WFD',
+                            'MSE0','MSE1','MSE2'
+                            ],
+                aggregate = True,
+                n_neighbors=12, min_dist=0.1,
+                scaler_type = 'standard',               
+                pca_components = 5,
+                )
+
+#pd.set_option('display.max_rows', 500)
 #print(feats)
+
+
 '''
 #TO DO : CONVERT MASKED INPUT DATA TO NANS NOT ZEROS
 

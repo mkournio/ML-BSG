@@ -22,12 +22,7 @@ class TimeDomain(object):
                  **kwargs):
         
         self._validate()
-        self.data = data.copy()
-        
-        if 'MSE' in measures:
-            measures.remove('MSE')
-            measures += ['MSP','MSD','MSC','MSS']  
-            
+        self.data = data.copy()           
         self.measures = measures
         
         return
@@ -62,14 +57,20 @@ class TimeDomain(object):
                 hdus = get_hdu_from_keys(ff[1:], HDUTYPE = 'LIGHTCURVE', BINSIZE = str(bin_size_d))
                 print(f'Extracting TD metrics for {star} - {tic}')
 
-                for hdu in hdus:
+                for hdu in hdus:           
                     
                     values = self.td_lc(hdu,self.measures)
                     
                     for m, v in zip(self.measures,values):
-                        if np.isnan(v): 
-                            v = None
-                        hdu.header[m] = v
+                        
+                        if m == 'MSE':                            
+                            mse = self.lc_mse(hdu)
+                            for im, vm in enumerate(mse):
+                                hdu.header[f'MSE{im}'] = vm
+                        else:
+                            if np.isnan(v):
+                                v = None
+                            hdu.header[m] = v
                         
                 ff.writeto(os.path.join(path_to_output_fits,filename[0]), overwrite=True)
                 
@@ -153,9 +154,6 @@ class TimeDomain(object):
         
         mval = np.full(len(measures), np.nan)
         
-       # if 'MSP' in measures:
-        #    msp, msd, msc, mss = get_mse(lc.flux)
-
         for i, m in enumerate(measures):
             
             if m == 'STD':
@@ -174,16 +172,18 @@ class TimeDomain(object):
                 mval[i] = get_eta(lc.flux)
             elif m == 'PSI':
                 mval[i] = get_psi_sq(lc.flux)
-            elif m == 'MSP':
-                mval[i] = msp
-            elif m == 'MSD':
-                mval[i] = msd
-            elif m == 'MSC':
-                mval[i] = msc
-            elif m == 'MSS':
-                mval[i] = mss
                 
-        return mval 
+        return mval
+    
+    @staticmethod    
+    def lc_mse(f, flux_key = 'dmag'):
+        
+        lc = get_lc_from_filename(f, flux_key = flux_key)
+        lc = lc.remove_outliers(sigma=3.)
+        mse = get_mse(lc.flux)
+        
+        return mse
+        
     
 class FrequencyDomain(object):
     
@@ -277,12 +277,12 @@ class FrequencyDomain(object):
         for i, m in enumerate(measures):
             
             if m == 'TOP':
-                mval[i] = get_top(data)
+                mval[i] = get_top(data, minf = min_freq)
             elif m == 'HPR':
                 mval[i] = get_hpr(data)
             elif m == 'WFM':
-                mval[i] = get_wfm(data)
+                mval[i] = get_wfm(data, minf = min_freq)
             elif m == 'WFD':
-                mval[i] = get_wfd(data)
+                mval[i] = get_wfd(data, minf = min_freq)
                 
         return mval 
