@@ -228,13 +228,13 @@ class Features(DataFrame):
             spt = self_l['SpC'][umask].iloc[0]
             
             if 'YHG' in spt:
-                c = 'r'
+                c = 'g'
                 m = 'o'
             elif 'B[e]SG' in spt :
                 c = 'b' 
                 m = 's'
             elif 'LBV' in spt:
-                c = 'lime'
+                c = 'orange'
                 m = '^'
                 
             ax.plot(ustar[:,0],ustar[:,1],c='0.8')    

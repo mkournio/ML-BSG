@@ -9,6 +9,7 @@ from lightkurve.correctors import DesignMatrix,RegressionCorrector
 from astropy import units as u
 from astropy.coordinates import SkyCoord
 from astroquery.vizier import Vizier
+from astropy.io import fits
 
 TESS_pix_size = 21
 GAIA_UPMARK = 64
@@ -567,4 +568,36 @@ def save_three_col(lc, filename, meta, units = 'mag'):
     
     return
 
+def fourier_series(t,params):
+    
+    if isinstance(params, fits.BinTableHDU):
+        params = params.data
+        p = {}
+        p['nmod'] = len(params['frequency']) - 1
+        i = 1
+        while f'amplitude_{i}' in params.columns.names:
+            i += 1            
+        p['nterms'] = i - 1        
+        for m in range(p['nmod']):
+            p[f'offset_{m}'] = float(params['offset'][m])
+            p[f'f_{m}'] = float(params['frequency'][m])
+            for h in range(1,p['nterms']+1):
+                p[f'ampl_{m}_{h}'] = float(params[f'amplitude_{h}'][m])
+                p[f'phase_{m}_{h}'] = float(params[f'phase_{h}'][m])
+    else:
+        p = params.valuesdict()
+
+    if p['nmod'] == 0:
+        
+        return lk.LightCurve(time = t, flux = np.zeros(len(t))) 
+
+    func = np.zeros(len(t))
+    for m in range(p['nmod']):
+        
+        func += p[f'offset_{m}']
+        for h in range(1,p['nterms']+1):
+
+            func += p[f'ampl_{m}_{h}'] * np.sin(2 * np.pi * h * p[f'f_{m}'] * (t-t[0]) + p[f'phase_{m}_{h}'])
+  
+    return lk.LightCurve(time = t, flux = func)
 

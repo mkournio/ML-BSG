@@ -42,6 +42,7 @@ class Visualize(GridTemplate):
     
     def lightcurves(self, 
                     stitched = False, 
+                    models = False,
                     bin_size = None, 
                     **kwargs):
         
@@ -70,9 +71,16 @@ class Visualize(GridTemplate):
                 hdulist = fits.open(os.path.join(path_to_output_fits,filename[0]))
                 
                 sectors = get_sectors_from_hdulist(hdulist)
-                hdu_raw = [get_hdu_from_keys(hdulist, SECTOR = s, TTYPE2 = 'flux', BINNING = 'F')[0] for s in sectors]
-                hdu_bin = [get_hdu_from_keys(hdulist, SECTOR = s, TTYPE2 = 'flux', BINNING = 'T', BINSIZE = str(bin_size))[0] for s in sectors]
-
+                if 'custom_sect' in kwargs:
+                    if star in kwargs['custom_sect']:
+                        sectors = kwargs['custom_sect'][star]
+             
+                hdu_raw = [get_hdu_from_keys(hdulist, SECTOR = s, HDUTYPE = 'LIGHTCURVE', BINNING = 'F')[0] for s in sectors]
+                hdu_bin = [get_hdu_from_keys(hdulist, SECTOR = s, HDUTYPE = 'LIGHTCURVE', BINNING = 'T', BINSIZE = str(bin_size))[0] for s in sectors]
+                if models:
+                    hdu_mods = [get_hdu_from_keys(hdulist, SECTOR = s, HDUTYPE = 'FREQUENCIES', BINNING = 'T', BINSIZE = str(bin_size))[0] for s in sectors]
+                    grouped_hdu_mods = group_consecutive_hdus(hdu_mods,sectors)
+                    
                 if stitched:
                     
                     minmax = get_minmax_flux(hdu_bin, flux_key = self.plot_key)
@@ -84,27 +92,37 @@ class Visualize(GridTemplate):
                     
                     grouped_hdu_bin = group_consecutive_hdus(hdu_bin,sectors)
                     plot_lc_multi(axes, grouped_hdu_bin, flux_key = self.plot_key, lc_type = 'binned')
-                        
+                    
+                    if models :
+                        plot_mod_multi(axes, grouped_hdu_mods, ref_hdus = grouped_hdu_bin, m='-', lw=0.6)
+                                   
                     add_plot_features(axes, mode = self.plot_key,
                                       upper_left='{} (TIC {})'.format(star,tic), 
                                     #  upper_right='CROWD {:.2f}'.format(crowdsap),
                                       lower_left=spc, y_min_max = minmax)
                     
                 else:
-                    
-                     for r,b,sect in zip(hdu_raw,hdu_bin,sectors):
+                     
+                     for i in range(len(hdu_raw)):
+                         
+                         r = hdu_raw[i]
+                         b = hdu_bin[i]
+                         sect = sectors[i]
                          
                          ax = self.GridAx()
                          
                          plot_lc_single(ax, r, m='.', flux_key = self.plot_key, lc_type = r.header['PIPELINE'])
                          plot_lc_single(ax, b, flux_key = self.plot_key, lc_type = 'binned')
+                         if models:
+                             mod_hdu = hdu_mods[i]
+                             plot_mod_single(ax, mod_hdu, ref_hdu = b, ls='--', lw=1.3)
                          
                          add_plot_features(ax, mode = self.plot_key,
                                            upper_left=star, lower_left=spc,
                                            lower_right='{} ({})'.format(tic,sect))
                          
                 log_file.write('{:30s} {:+.8f} {:+.8f} {:10s} {} {}\n'.format(star,l['RA'],l['DEC'],spc,tic,get_filename(self.filename,self.output_format)))
-
+ 
         self.close_plot()
         log_file.close()
         

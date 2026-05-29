@@ -26,16 +26,21 @@ LOC = [('MW' in x) for x in cm['GAL']]
 #LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
 cm = cm[LOC]
 
-#START FROM HD62623 - 126441970, CHECK RUNTIMEERROR IN RED NOISE FIT
-#cm = cm[1:2]
-#### QUERYING FROM MAST - SPOC LIGHTCURVES
-# 17/10/25 - last update
-#r=np.where(cm['STAR']=='HD87643')[0][0]
-#cm = cm[r:r+1]
-#mast_query(cm, download_dir='data/', product = "Lightcurve")
+#r=np.where(cm['STAR']=='P Cyg')[0][0]
+#cm = cm[r:]
+#cm = cm[:1]
 
 
- 
+################ QUERYING FROM MAST
+#mast_query(cm, download_dir='data/')
+#mast_query(cm, product="Targetpixelfile")
+
+# DOWNLOAD CBVs
+download_cbvs(cm)
+
+# DOWNLOAD TPFs - 
+#download_tpfs(cm, frame = 0, del_original = True)
+
 #print(cm.columns)
 #print(cm['STAR','SpC','TEFF','MK'].pprint(max_lines=-1,max_width=-1))
 
@@ -48,7 +53,8 @@ cm = cm[LOC]
 #LCs.lightcurves(time_bin = [0.00694,0.02083], save_fits = True, extract_field = False)
 
 # Lightcurve visualization
-#Visualize(data=cm, plot_name='EMS', plot_key='dmag', rows_page=7, cols_page=1,join_pages=False, output_format='png').lightcurves(stitched=True, bin_size = '10m')
+#LCs = Visualize(data=cm, plot_name='EMS', plot_key='dmag', rows_page=7, cols_page=3,join_pages=False, output_format='png')
+#LCs.lightcurves(stitched=False, bin_size = '10m', models=True)
 
 
 time_metrics = ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
@@ -63,7 +69,7 @@ rn_metrics = ['W0','R0','TAU','GAMMA']
 
 ##### FREQUENCY DOMAIN EXTRACTION
 #PGs = Extract(data=cm, 
-#              plot_name='ls_ems_extra', 
+#              plot_name='LS_EMS', 
 #              fig_xlabel = '', fig_ylabel = '', 
 #              figsize = (12,22),
 #              output_format='png')
@@ -78,7 +84,7 @@ rn_metrics = ['W0','R0','TAU','GAMMA']
 ##### FREQUENCY-DOMAIN MEASURES
 #fd = FrequencyDomain(data = cm, measures = frequency_metrics).calculate(bin_size = '10m', min_freq = 2/27.)
 
-
+'''
 meta_keys = ['STAR','TIC','TEFF','LOGL','JK','MJ','MG','SpC']
 if 'MSE' in time_metrics:
     m_ind = time_metrics.index('MSE')
@@ -94,10 +100,11 @@ feats.get_from_sectors(
     log_convert = ['IQR','PSI','R0'],
     save_output = 'features_ems_2.csv')
     
-feats._aggregate(cols = rn_metrics+time_metrics+frequency_metrics,
-                     group_by = ['STAR','SpC','TIC'],
-                     save_output = 'features_aggr.csv') 
-  
+#feats._aggregate(cols = rn_metrics+time_metrics+frequency_metrics,
+#                     group_by = ['STAR','SpC','TIC'],
+#                     save_output = 'features_aggr.csv') 
+
+
 #feats.pair_plot(plot_cols = ['IQR','PSI','SKW','MSE0','MSE1'],
 #                hue = 'SpC')
 #feats.pair_plot(plot_cols = ['WFM','WFD','R0','GAMMA','TAU'],
@@ -118,7 +125,7 @@ feats.umap_plot(var_cols= ['IQR','PSI',
 #print(feats)
 
 
-'''
+
 #TO DO : CONVERT MASKED INPUT DATA TO NANS NOT ZEROS
 
 f.get_from_primary_headers(time_metrics + ['MINCROWD','AVECROWD'], update_table = True)

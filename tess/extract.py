@@ -66,25 +66,6 @@ def plot_bkg_aperture(ax,tpf,bkg_mask):
         
     return ax
     
-
-def fourier_series(t,params):
-    
-    p = params.valuesdict()
-    
-    if p['nmod'] == 0:
-        
-        return lk.LightCurve(time = t, flux = np.zeros(len(t))) 
-    
-    func = np.zeros(len(t))
-    for m in range(p['nmod']):
-        
-        func += p[f'offset_{m}']
-        for h in range(1,p['nterms']+1):
-
-            func += p[f'ampl_{m}_{h}'] * np.sin(2 * np.pi * h * p[f'f_{m}'] * (t-t[0]) + p[f'phase_{m}_{h}'])
-    
-    return lk.LightCurve(time = t, flux = func)
-
 def fit_residuals(params, x, y, y_err = []): 
     
     if len(y_err) == 0 or all(y_err == np.zeros(len(y))):
@@ -251,7 +232,7 @@ class Extract(GridTemplate):
             pipeline = 'unknown'
              
         lc = lk.TessLightCurveFile(path_to_input_file).remove_nans().remove_outliers()
-        
+        lc = lc[lc.quality==0]
         # Opening fits using astropy because LightKurve method for
         # retrieving header is depraced
         lc_fits = fits.open(path_to_input_file)

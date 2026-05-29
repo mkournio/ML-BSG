@@ -5,13 +5,14 @@ import matplotlib.pyplot as plt
 from matplotlib import patches
 from constants.styles import *
 from methods.tools import check_header_key
-from methods.functions import round_to
+from methods.functions import round_to, fourier_series
 import os
 from astropy.visualization import PercentileInterval, ImageNormalize, LinearStretch
 import numpy as np
 from astropy.io import fits
 import warnings
 import lightkurve as lk
+import sys
 
 def plot_lc_single(ax, 
                    lc,
@@ -57,6 +58,7 @@ def plot_lc_multi(axes,
                   m = '',
                   flux_key ="flux",
                   lc_type = 'any',
+                  models = [],
                   **kwargs):
     
     if not isinstance(axes,list) and len(axes) != len(grouped_hdus):
@@ -88,6 +90,71 @@ def plot_lc_multi(axes,
         ax.set_xticks([round_to(x1_p,5)[0], round_to(x2_p,5)[1]])
         
     return axes   
+
+def plot_mod_single(ax, 
+                   mod_hdu,
+                   ref_hdu = None,
+                   m = '',
+                   **kwargs):
+    
+    if mod_hdu is None:
+        return
+    
+    if ax is None:
+     _, ax = plt.subplots()    
+     
+    nanmask = [] 
+    t0 = float(mod_hdu.header['T0'])
+    tdel = float(mod_hdu.header['BINSIZE'])
+    if ref_hdu == None: 
+        mod_time = np.arange(t0,t0+27,tdel)
+    elif isinstance(ref_hdu, fits.BinTableHDU):
+        mod_time = np.array(ref_hdu.data.time)
+        nanmask = np.isnan(ref_hdu.data.flux)
+        
+    model = fourier_series(mod_time, mod_hdu)    
+    model.flux[nanmask] = np.nan
+
+    ax.plot(model.time.value,model.flux,m,c = LC_COLOR['model'],**kwargs)
+    
+    return ax
+
+def plot_mod_multi(axes,
+                  grouped_mods,
+                  ref_hdus = None,
+                  m = '',
+                  **kwargs):
+    
+    if not isinstance(axes,list) and len(axes) != len(grouped_hdus):
+        raise TypeError('Size of grouped HDUs does not match that of axes.')
+        
+    for i in range(len(grouped_mods)):
+        
+        g_hdu = grouped_mods[i]
+        ax = axes[i]            
+        
+        g_times = np.empty(0); g_fluxes = np.empty(0); g_sects = []
+        
+        for ii in range(len(g_hdu)):
+            
+            hdu = g_hdu[ii]
+            
+            t0 = hdu.header['T0']
+            tdel = float(hdu.header['BINSIZE'])
+            
+            if ref_hdus == None: 
+                mod_time = np.arange(t0,t0+27,tdel)                
+            elif isinstance(ref_hdus[i][ii],fits.BinTableHDU):
+                mod_time = ref_hdus[i][ii].data.time
+                
+            model = fourier_series(mod_time, hdu)            
+            g_times = np.append(g_times,model['time'].value)
+            g_fluxes = np.append(g_fluxes,model['flux'])
+ 
+        ax.plot(g_times, g_fluxes,m,c = LC_COLOR['model'],**kwargs)
+        
+    return axes  
+
 
 def plot_tess_field(field, ax = None, spoc_aperture = None, thr_aperture = None, **kwargs):
     
