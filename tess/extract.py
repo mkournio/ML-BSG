@@ -17,6 +17,8 @@ from matplotlib import patches
 from lightkurve.correctors import CBVCorrector, load_tess_cbvs
 import datetime
 import traceback
+import time
+import re
 
 def max_freq_sn(pg, sn_window, freq_mask, mode='std'):
     
@@ -183,8 +185,8 @@ class CBVs:
         #   return      
         
         #RHO CAS
-       # if not (lc.ticid == 65366071 and int(lc.sector) == 57):
-        #   return   
+        #if not (lc.ticid == 65366071 and int(lc.sector) == 57):
+         #  return   
         
         #eta Car
         #if not (lc.ticid == 458859916 and int(lc.sector) == 99):
@@ -231,7 +233,7 @@ class CBVs:
         ax1.set_ylabel("Rel. flux + const.")
         ax1.legend(ncol=3,fontsize=8)
         
-        cbv_lc = self.cbv_correct(lc, time_out = time_out)   
+        cbv_lc = self.cbv_correct(lc, time_out = time_out) 
         cbv_lc = cbv_lc / np.nanmedian(cbv_lc)
                     
         ax2.plot(t,sap,"r.",label="SAP")
@@ -264,22 +266,40 @@ class CBVs:
     @staticmethod
     def cbv_correct(lc,
                      cbv_type = ["SingleScale","Spike"],
-                     cbv_indices = [np.array([1,2,3]),np.array([1,2])],
+                     cbv_indices = [np.array([1,2]),np.array([1,2])],
                      alpha_bounds = [1e-2, 1e+1], # Moderate/weak
-                     time_out = 180):
+                     time_out = 180):     
+        
         try:
-            with time_limit(time_out):
-                
-                    lc_cbv = CBVCorrector(lc,interpolate_cbvs=True).correct(
-                        cbv_type = cbv_type,
-                        cbv_indices = cbv_indices,
-                        alpha_bounds = alpha_bounds,
-                        )
-                        # alpha_bounds = [1e-2, 1e-1],  # Aggressive
-                        # alpha_bounds = [1e-2, 1e+3],  # Coservative - similar to SAP
+            repeat = True
+            max_retries = 4
+            retry_count = 0
+            
+            while repeat and retry_count < max_retries:
+                try:
+                    repeat = False
+                    with time_limit(time_out):
+                        lc_cbv = CBVCorrector(lc,interpolate_cbvs = True).correct(
+                            cbv_type = cbv_type, cbv_indices = cbv_indices,
+                            alpha_bounds = alpha_bounds)
+                except lk.LightkurveError as e:
+                    error_msg = str(e)
+                    if "corrupt due to an interrupted download" in error_msg:
+                        path_corrupt = [x for x in error_msg.split() if ".fits" in x][0]
+                        os.remove(path_corrupt)
+                        print('Repetition due to broken download..') 
+                        retry_count += 1
+                        repeat = True
+                    else:
+                        raise e                        
+                except Exception as e:
+                    raise e
                     
-                    return lc_cbv.flux.value
-                
+            if not repeat:
+                return lc_cbv.flux.value
+            else:
+                raise lk.LightkurveError("Target abandoned: Maximum download retry limit reached.")
+            
         except (TimeoutException, ValueError, lk.LightkurveError, np.linalg.LinAlgError) as e:
             
             print(f"Error (check log) - Lightcurve not corrected.")
@@ -290,6 +310,8 @@ class CBVs:
                 log_file.write("\n" + "="*40 + "\n")                    
             
             return lc.flux.value
+        
+        
 
 class Extract(GridTemplate):
     
