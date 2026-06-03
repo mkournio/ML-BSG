@@ -20,6 +20,7 @@ LSUN = 3.846E+33 # ergs s^-1  (erg = g cm^2 s^-2)
 SBOLTZ = 5.6704E-5   # g s^-3 K^-4
 RCONST = 1. / (2 * PI * RSUNKM * S_TO_D)
 
+TESS_pix_size = 21
 
 
 

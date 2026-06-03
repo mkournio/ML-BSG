@@ -10,9 +10,8 @@ from astropy import units as u
 from astropy.coordinates import SkyCoord
 from astroquery.vizier import Vizier
 from astropy.io import fits
-
-TESS_pix_size = 21
-GAIA_UPMARK = 64
+import signal
+from contextlib import contextmanager
 
 class Gaia(object):
 
@@ -601,3 +600,16 @@ def fourier_series(t,params):
   
     return lk.LightCurve(time = t, flux = func)
 
+class TimeoutException(Exception): 
+    pass
+
+@contextmanager
+def time_limit(seconds):
+    def signal_handler(signum, frame):
+        raise TimeoutException("Timed out!")
+    signal.signal(signal.SIGALRM, signal_handler)
+    signal.alarm(seconds)
+    try:
+        yield
+    finally:
+        signal.alarm(0)

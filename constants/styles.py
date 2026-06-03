@@ -24,8 +24,7 @@ PLOT_YLABEL =   {
     'dmag' : r'$\Delta$m [mag]'
     }
         
-        
-        
+GAIA_UPMARK = 64
 
 SIZE_FONT_SUB = 12
 SIZE_XLABEL_FIG = 22

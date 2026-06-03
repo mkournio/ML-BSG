@@ -26,8 +26,8 @@ LOC = [('MW' in x) for x in cm['GAL']]
 #LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
 cm = cm[LOC]
 
-#r=np.where(cm['STAR']=='P Cyg')[0][0]
-#cm = cm[r:]
+r=np.where(cm['STAR']=='eta Car')[0][0]
+cm = cm[r+1:]
 #cm = cm[:1]
 
 
@@ -36,7 +36,7 @@ cm = cm[LOC]
 #mast_query(cm, product="Targetpixelfile")
 
 # DOWNLOAD CBVs
-download_cbvs(cm)
+#download_cbvs(cm)
 
 # DOWNLOAD TPFs - 
 #download_tpfs(cm, frame = 0, del_original = True)
@@ -52,6 +52,8 @@ download_cbvs(cm)
 #LCs = Extract(data=cm, plot_key='dmag', plot_name='x_ems_extra', output_format='png')
 #LCs.lightcurves(time_bin = [0.00694,0.02083], save_fits = True, extract_field = False)
 
+# CBV VALIDATION
+CBVs(cm).validate()
 # Lightcurve visualization
 #LCs = Visualize(data=cm, plot_name='EMS', plot_key='dmag', rows_page=7, cols_page=3,join_pages=False, output_format='png')
 #LCs.lightcurves(stitched=False, bin_size = '10m', models=True)
