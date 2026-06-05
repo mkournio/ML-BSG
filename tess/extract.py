@@ -133,6 +133,8 @@ class CBVs:
     
     def validate(
            self,
+           time_out = 180,
+           custom_types = None,
            **kwargs                  
             ):
         
@@ -143,6 +145,10 @@ class CBVs:
         stars = self.data['STAR']
         tics = self.data['TIC']
         
+        if custom_types != None:
+            ctic,csec,ctype = np.genfromtxt(custom_types, dtype=str,
+                                            usecols = [0,1,3], unpack=True)
+            
         for star, tic in zip(stars,tics):
             
             spoc_files = [f for f in fSPOC if str(tic) in f]
@@ -154,9 +160,9 @@ class CBVs:
             
             sect_all = sorted(set(np.concatenate((sec_spoc,sec_tspoc),axis=0)))
             print(f'Checking star {star}..')
-            for sect in sect_all:
+            for sectn in sect_all:
                 
-                sect = 's%04d' % sect
+                sect = 's%04d' % sectn
                 spoc_f = [f for f in spoc_files if sect in f]
                 tspoc_f = [f for f in tspoc_files if sect in f]
                 
@@ -165,32 +171,30 @@ class CBVs:
                     path_to_input_file = os.path.join(path_to_spoc_files, spoc_f[0], spoc_f[0]+'_lc.fits')
                     if 'a_fast' in spoc_f[0]:
                         path_to_input_file = os.path.join(path_to_spoc_files, spoc_f[0], spoc_f[0]+'-lc.fits')
-                   # ax_lc = self._extract_lc(path_to_input_file, time_bin, **kwargs)
                 elif (len(tspoc_f) > 0):
                     path_to_input_file = os.path.join(path_to_tess_spoc_files, tspoc_f[0], tspoc_f[0][:-3]+'_lc.fits')
+                    
+                if custom_types != None:
+                    for j in range(len(ctic)):
+                        if ctic[j] == str(tic) and csec[j] == str(sectn):
+                            self._plot(path_to_input_file, time_out = time_out, custom_type=ctype[j], **kwargs)
+                else:
+                    self._plot(path_to_input_file, time_out = time_out, **kwargs)
 
-                self._plot(path_to_input_file, **kwargs)
                 
         return
     
-    def _plot(self, fits_path, time_out = 180,  **kwargs):
+    def _plot(self, fits_path, time_out, custom_type = None, **kwargs):
         
         if fits_path == '':
             return
         
         lc0 = lk.TessLightCurveFile(fits_path,flux_column="sap_flux")
-        lc = lc0.copy()        
-        
-       # if not (lc.ticid == 364146227 and int(lc.sector) == 62):
-        #   return      
+        lc = lc0.copy()
         
         #RHO CAS
-        #if not (lc.ticid == 65366071 and int(lc.sector) == 57):
-         #  return   
-        
-        #eta Car
-        #if not (lc.ticid == 458859916 and int(lc.sector) == 99):
-         #   return   
+        #if not (lc.ticid == 65366071 and int(lc.sector) == 105):
+         #  return
 
         ok = (
             np.isfinite(lc.time.value)
@@ -204,17 +208,6 @@ class CBVs:
         sap = (lc.sap_flux / np.nanmedian(lc.sap_flux))
         pdcsap = (lc.pdcsap_flux / np.nanmedian(lc.pdcsap_flux))
         
-        cbvs = load_tess_cbvs(
-            cbv_dir=path_to_cbv_files,
-            sector=lc.sector,
-            camera=lc.camera,
-            ccd=lc.ccd,
-            cbv_type="SingleScale"
-            )
-        
-        cbvs = cbvs.interpolate(lc)
-        cbv_cols = [c for c in cbvs.columns if c.startswith("VECTOR")]
-        
         fig = plt.figure(figsize=(13,11))
         
         gs = fig.add_gridspec(2,2)
@@ -222,25 +215,43 @@ class CBVs:
         ax2 = fig.add_subplot(gs[1, :])
         ax3 = fig.add_subplot(gs[0, 1])
         
-        for i, col in enumerate(cbv_cols[:5]):
-            
-            y = np.asarray(cbvs[col], float)
-            y = (y - np.nanmedian(y)) / np.nanstd(y)
-            
-            ax1.plot(cbvs.time.value, y + 4 * i,lw=1,label=col)
+        try:
+            cbvs = load_tess_cbvs(
+                cbv_dir=path_to_cbv_files,
+                sector=lc.sector,
+                camera=lc.camera,
+                ccd=lc.ccd,
+                cbv_type="SingleScale"
+                )
+            cbvs = cbvs.interpolate(lc)
+            cbv_cols = [c for c in cbvs.columns if c.startswith("VECTOR")]
+            for i, col in enumerate(cbv_cols[:5]):
+                y = np.asarray(cbvs[col], float)
+                y = (y - np.nanmedian(y)) / np.nanstd(y)
+                ax1.plot(cbvs.time.value, y + 4 * i,lw=1,label=col)
+        except:
+            print("No CBV files found locally.")
+            pass
             
         ax1.set_ylabel("Normalized CBVs")
         ax1.set_ylabel("Rel. flux + const.")
         ax1.legend(ncol=3,fontsize=8)
         
-        cbv_lc = self.cbv_correct(lc, time_out = time_out) 
-        cbv_lc = cbv_lc / np.nanmedian(cbv_lc)
-                    
-        ax2.plot(t,sap,"r.",label="SAP")
-        ax2.plot(t,pdcsap,"b.",label="PDCSAP")
-        ax2.plot(t,cbv_lc,"g.",label="SAP + CBVs [1-3]")
+        if (custom_type in [None,'SAP+']) or ('*' in custom_type):
+            cbv_lc = self.cbv_correct(lc, time_out = time_out) 
+            cbv_lc = cbv_lc / np.nanmedian(cbv_lc)
+        elif custom_type == 'SAP':
+            cbv_lc = sap
+        else:
+            plt.close()
+            
+            return   
+        
+        ax2.plot(t,cbv_lc,"g.",label=f"{custom_type}")
+        if custom_type == None:
+            ax2.plot(t,sap,"r.",label="SAP")
+            ax2.plot(t,pdcsap,"b.",label="PDCSAP")
 
-            #ax[1].plot(t,sap_cbv,".",ms=5,label="SAP + CBV 1-3")
         ax2.set_xlabel(f"Time - {lc.bjdrefi} [d]")
         ax2.set_ylabel("Rel. flux")
         ax2.legend()
@@ -249,7 +260,7 @@ class CBVs:
             tpf = lk.TessTargetPixelFile(f'{path_to_tpfs}{lc.ticid}_{lc.sector}_0.fits')
             tpf.plot(ax=ax3,aperture_mask='pipeline',title=f'TIC {lc.ticid} (s{lc.sector}) - cr{round(lc.crowdsap,2)}')
         except:
-            print('No TPF preview found.')
+            print('No TPF preview found locally.')
             pass
         
 
@@ -259,14 +270,13 @@ class CBVs:
         print(f'..plotted {lc.ticid}_{lc.sector}')
         
         plt.close()
-
                                                           
         return
     
     @staticmethod
     def cbv_correct(lc,
-                     cbv_type = ["SingleScale","Spike"],
-                     cbv_indices = [np.array([1,2]),np.array([1,2])],
+                     cbv_type = ["SingleScale"],
+                     cbv_indices = [np.array([1,2,3])],
                      alpha_bounds = [1e-2, 1e+1], # Moderate/weak
                      time_out = 180):     
         
@@ -279,9 +289,11 @@ class CBVs:
                 try:
                     repeat = False
                     with time_limit(time_out):
-                        lc_cbv = CBVCorrector(lc,interpolate_cbvs = True).correct(
+                      #  start = time.time()
+                        lc_cbv = CBVCorrector(lc,cbv_dir=path_to_cbv_files,interpolate_cbvs = True).correct(
                             cbv_type = cbv_type, cbv_indices = cbv_indices,
                             alpha_bounds = alpha_bounds)
+                       # print(f'Time spent: {time.time()-start}')
                 except lk.LightkurveError as e:
                     error_msg = str(e)
                     if "corrupt due to an interrupted download" in error_msg:
@@ -302,16 +314,23 @@ class CBVs:
             
         except (TimeoutException, ValueError, lk.LightkurveError, np.linalg.LinAlgError) as e:
             
-            print(f"Error (check log) - Lightcurve not corrected.")
+            if isinstance(e, TimeoutException):
+                print(f"Timeout - {time_out}s")
+            elif isinstance(e, np.linalg.LinAlgError):
+                print("Linear algebra matrix inversion failed.")
+            elif isinstance(e, lk.LightkurveError):
+                print(f"Lightkurve specific error.")
+            elif isinstance(e, ValueError):
+                print(f"Value error encountered.")
+            print(f"Lightcurve not corrected - check error log")
+            
             with open("CBV_pipeline_errors.log", "a") as log_file:
                 timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 log_file.write(f"[{timestamp}] {lc.object} - s{lc.sector}: {e}\n")
                 traceback.print_exc(file=log_file)
                 log_file.write("\n" + "="*40 + "\n")                    
             
-            return lc.flux.value
-        
-        
+            return lc.flux.value      
 
 class Extract(GridTemplate):
     
@@ -387,13 +406,12 @@ class Extract(GridTemplate):
                  path_to_input_file = os.path.join(path_to_spoc_files, spoc_f[0], spoc_f[0]+'_lc.fits')
                  if 'a_fast' in spoc_f[0]:
                     path_to_input_file = os.path.join(path_to_spoc_files, spoc_f[0], spoc_f[0]+'-lc.fits')
-                 ax_lc = self._extract_lc(path_to_input_file, time_bin, **kwargs)
-                 print('{}: extracted Sector {} of TIC {} (SPOC)'.format(star,sect,tic))
+                 print('{}: extracting Sector {} of TIC {} (SPOC)'.format(star,sect,tic))
              elif (len(tspoc_f) > 0) and (mode == 'ALL'):
                  path_to_input_file = os.path.join(path_to_tess_spoc_files, tspoc_f[0], tspoc_f[0][:-3]+'_lc.fits')
-                 ax_lc = self._extract_lc(path_to_input_file, time_bin, **kwargs)
-                 print('{}: extracted Sector {} of TIC {} (TESS-SPOC)'.format(star,sect,tic))
+                 print('{}: extracting Sector {} of TIC {} (TESS-SPOC)'.format(star,sect,tic))
                  
+             ax_lc = self._extract_lc(path_to_input_file, time_bin, **kwargs)                 
              add_plot_features(ax_lc, mode = self.plot_key, upper_left=star,
                                       lower_left=spc,lower_right='{} ({})'.format(tic,sect))
                  
