@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib import patches
 from constants.styles import *
 from methods.tools import check_header_key
-from methods.functions import round_to, fourier_series
+from methods.functions import round_to, fourier_series, normalize_break
 import os
 from astropy.visualization import PercentileInterval, ImageNormalize, LinearStretch
 import numpy as np
@@ -19,6 +19,7 @@ def plot_lc_single(ax,
                    m = '',
                    flux_key ="flux",
                    lc_type = 'any',
+                   trend = False,
                    **kwargs):
     
     if lc is None:
@@ -49,8 +50,17 @@ def plot_lc_single(ax,
     else:
         raise TypeError('Object light curve does not have supportive format!')
 
-    ax.plot(time,flux,m,c = LC_COLOR[lc_type])
-    
+    #ax.plot(time,flux,m,c = LC_COLOR[lc_type])
+    if trend:
+        if flux_key != "flux":
+            print('Trend is only available for the raw lightcurve.')
+        else:
+            if not isinstance(lc, lk.LightCurve):
+                lc = lk.LightCurve(time=time,flux=flux,flux_err=flux_err)
+            lcn, trend = normalize_break(lc, deg=2, break_tolerance = 200)
+            #ax.plot(trend.time.value, trend.flux, 'r-')
+            ax.plot(lcn.time.value, lcn.flux, m, c = LC_COLOR[lc_type])
+  
     return ax
 
 def plot_lc_multi(axes,
@@ -89,7 +99,7 @@ def plot_lc_multi(axes,
         x2_p = (2*g_times[-1]+g_times[0])/3.
         ax.set_xticks([round_to(x1_p,5)[0], round_to(x2_p,5)[1]])
         
-    return axes   
+    return axes  
 
 def plot_mod_single(ax, 
                    mod_hdu,

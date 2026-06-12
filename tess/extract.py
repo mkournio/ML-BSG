@@ -184,7 +184,11 @@ class CBVs:
                 
         return
     
-    def _plot(self, fits_path, time_out, custom_type = None, **kwargs):
+    def _plot(self, 
+              fits_path, 
+              time_out, 
+              custom_type = None, 
+              **kwargs):
         
         if fits_path == '':
             return
@@ -278,7 +282,7 @@ class CBVs:
                      cbv_type = ["SingleScale"],
                      cbv_indices = [np.array([1,2,3])],
                      alpha_bounds = [1e-2, 1e+1], # Moderate/weak
-                     time_out = 180):     
+                     time_out = 200):     
         
         try:
             repeat = True
@@ -356,35 +360,35 @@ class Extract(GridTemplate):
      pass
 
     def lightcurves(self, 
-                    time_bin = [], 
+                    time_bin = [],
+                    type_file = None,
+                    gap_file = None,
                     mode = 'ALL', 
                     **kwargs):        
         
      if kwargs.get('save_lcs') :         
          if not os.path.exists(path_to_lcs): 
             os.makedirs(path_to_lcs)
-            
+ 
      fSPOC = os.listdir(path_to_spoc_files)
      fTSPOC = os.listdir(path_to_tess_spoc_files)
-     fFFI = os.listdir(path_to_tesscut_files)
                  
      stars = self.data['STAR']
      tics = self.data['TIC']
      spcs = self.data['SpC']
      ras = self.data['RA']
      decs = self.data['DEC']
-     
      for star, spc, tic, ra, dec in zip(stars,spcs,tics,ras,decs):
          
          spoc_files = [f for f in fSPOC if str(tic) in f]
          spoc_files = remove_slow_lcs(spoc_files)
          sec_spoc = [int(f.split('-')[1][1:]) for f in spoc_files]
-         
+   
          tspoc_files = [f for f in fTSPOC if str(tic) in f]
          sec_tspoc = [int(f.split('-')[2][1:5]) for f in tspoc_files]
          
          sect_all = sorted(set(np.concatenate((sec_spoc,sec_tspoc),axis=0)))
-       
+      
       #   print(star,tic,spoc_files,sec_spoc)
        #  print(star,tic,tspoc_files,sec_tspoc)
          
@@ -392,27 +396,49 @@ class Extract(GridTemplate):
                  fits_path = get_fits_name(star,tic)                 
                  if not os.path. exists(fits_path):
                     self.ff = FitsObject(fits_path)
+                    print(f'Fits file for {star} - TIC{tic} created.')
                  else:
                     print(f'Fits file for {star} - TIC{tic} exists.')
                     continue          
        
-         for sect in sect_all:             
-             
-             sect = 's%04d' % sect
+         for sectn in sect_all:             
+
+             sect = 's%04d' % sectn
              spoc_f = [f for f in spoc_files if sect in f]
              tspoc_f = [f for f in tspoc_files if sect in f]
-
+             
              if len(spoc_f) > 0:
                  path_to_input_file = os.path.join(path_to_spoc_files, spoc_f[0], spoc_f[0]+'_lc.fits')
                  if 'a_fast' in spoc_f[0]:
-                    path_to_input_file = os.path.join(path_to_spoc_files, spoc_f[0], spoc_f[0]+'-lc.fits')
+                     path_to_input_file = os.path.join(path_to_spoc_files, spoc_f[0], spoc_f[0]+'-lc.fits')
                  print('{}: extracting Sector {} of TIC {} (SPOC)'.format(star,sect,tic))
              elif (len(tspoc_f) > 0) and (mode == 'ALL'):
                  path_to_input_file = os.path.join(path_to_tess_spoc_files, tspoc_f[0], tspoc_f[0][:-3]+'_lc.fits')
                  print('{}: extracting Sector {} of TIC {} (TESS-SPOC)'.format(star,sect,tic))
-                 
-             ax_lc = self._extract_lc(path_to_input_file, time_bin, **kwargs)                 
-             add_plot_features(ax_lc, mode = self.plot_key, upper_left=star,
+              
+             sect_gaps = []
+             if gap_file != None:
+                 with open(gap_file) as gf:
+                     for gr in gf:
+                         r = gr.split()
+                         if int(r[0]) == tic and int(r[1]) == sectn:
+                             sect_gaps.append([float(r[2]), float(r[3])])
+       
+             custom_type = None
+             ndeg = 2
+             if type_file != None:
+                 with open(type_file) as tf:
+                     for tr in tf:
+                         r = tr.split()
+                         if int(r[0]) == tic and int(r[1]) == sectn:
+                             custom_type = r[3]
+                             ndeg = int(r[4]) 
+                             
+             ax_lc = self._extract_lc(path_to_input_file, time_bin,
+                                      custom_type=custom_type, ndeg = ndeg, 
+                                      gaps = sect_gaps, **kwargs)
+             if ax_lc != None:
+                 add_plot_features(ax_lc, mode = self.plot_key, upper_left=star,
                                       lower_left=spc,lower_right='{} ({})'.format(tic,sect))
                  
          if hasattr(self,'ff'):
@@ -444,6 +470,9 @@ class Extract(GridTemplate):
             self,
             path_to_input_file,
             time_bin,
+            custom_type = None,
+            ndeg = 2,
+            gaps = [],
             **kwargs):
         
         filename = path_to_input_file.split('/')[-1]
@@ -454,13 +483,28 @@ class Extract(GridTemplate):
         else:
             pipeline = 'unknown'
              
-        lc = lk.TessLightCurveFile(path_to_input_file).remove_nans().remove_outliers()
-        lc = lc[lc.quality==0]
-        # Opening fits using astropy because LightKurve method for
-        # retrieving header is depraced
-        lc_fits = fits.open(path_to_input_file)
+        lc0 = lk.TessLightCurveFile(path_to_input_file,flux_column="sap_flux").remove_outliers()
+        lc0 = lc0[lc0.quality==0]
+        lc = lc0.copy()
         
-        ax_lc = self.GridAx()
+        for n in gaps:
+            mask = (lc.time.value > n[0]) & (lc.time.value < n[1])
+            lc.flux[mask] = np.nan  
+            
+        lc = lc.remove_nans()
+     
+        print(f'LC type, ndeg, gaps: {custom_type} {ndeg} {gaps}')                
+        if (custom_type in [None,'SAP+']) or ('*' in custom_type):
+            try:
+                lc.flux = CBVs.cbv_correct(lc) * lc.flux.unit
+            except lk.LightkurveError :
+                print('Lightcurve not CBV corrected.')
+                pass            
+        elif custom_type == 'PDCSAP':
+            lc.flux = lc.pdcsap_flux             
+        elif (custom_type == 'LQ') or ('CRW' in custom_type):
+            
+            return None
         
         # Normalize raw by the polynomial fitting the binned light curve
         bcoeff = None
@@ -469,29 +513,32 @@ class Extract(GridTemplate):
         if len(time_bin) > 0:
             time_bin = sorted(time_bin, reverse = True)            
             lcb = lc.bin(time_bin_size = time_bin[0])
-            n_lcb, bcoeff = normalize(lcb)
+            n_lcb, bcoeff = normalize(lcb, deg = ndeg)
             binned_lcs.append(n_lcb)
             
             for t in time_bin[1:]:
                 lcb = lc.bin(time_bin_size = t)
-                n_lcb, _ = normalize(lcb, coeff = bcoeff)
-                binned_lcs.append(n_lcb)           
-            
-        n_lc, _ = normalize(lc, coeff = bcoeff)
+                n_lcb, _ = normalize(lcb, deg = ndeg, coeff = bcoeff)
+                binned_lcs.append(n_lcb)
+                
+        # RAW - UNBINNED     
+        n_lc, _ = normalize(lc,  deg = ndeg, coeff = bcoeff)
+        
         if kwargs.get('save_fits'):
+            lc_fits = fits.open(path_to_input_file)
             self.ff.add_lc(n_lc, header_source = lc_fits, binning = 'F', pipeline = pipeline)
             for t, n_lcb in zip(time_bin,binned_lcs) :
                 self.ff.add_lc(n_lcb, header_source = lc_fits, binning = 'T', binsize = str(t), pipeline = pipeline)
+            lc_fits.close()
                 
         # Plot the lightcurves
+        ax_lc = self.GridAx()
         plot_lc_single(ax_lc, n_lc, flux_key = self.plot_key, lc_type = pipeline, m = '.')
         if len(time_bin) > 0:
             plot_lc_single(ax_lc, binned_lcs[0], flux_key = self.plot_key, lc_type = 'binned')
             
         if self.plot_key == 'flux':
             plot_lc_single(n_lc, ax=ax_lc, flux_key = 'fitmodel', m = '--', lc_type = 'fit')            
-         
-        lc_fits.close()
         
         return ax_lc
     

@@ -25,9 +25,22 @@ cm.sort(['RA'])
 LOC = [('MW' in x) for x in cm['GAL']]
 #LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
 cm = cm[LOC]
+#cm = cm[:3]
+#sn = ['Hen3-298',
+#      'HD96918',
+#      'V432 Car',
+#      'HR5171',
+#      'CD-42 11721',
+#      'HR8752',
+#      '6 CAS'    
+#      ]
 
-r=np.where(cm['STAR']=='eta Car')[0][0]
-cm = cm[r+1:]
+
+#cm = cm[[np.where(cm['STAR']==n)[0][0] for n in sn]]
+#print(cm)
+
+#r = np.where(cm['STAR']=='CD-42 11721')[0][0]
+#cm = cm[r:r+1]
 #cm = cm[:1]
 
 
@@ -48,15 +61,17 @@ cm = cm[r+1:]
 #r=np.where(cm['STAR']=='IRC+10420')[0][0];  print(r)
 #cm = cm[r:r+1]
 
-# LIGHTVURVE EXTRACTION - FITS CREATION
-#LCs = Extract(data=cm, plot_key='dmag', plot_name='x_ems_extra', output_format='png')
-#LCs.lightcurves(time_bin = [0.00694,0.02083], save_fits = True, extract_field = False)
 
+
+# LIGHTVURVE EXTRACTION - FITS CREATION
+#LCs = Extract(data=cm, plot_key='dmag',plot_name='x3_ems', output_format='png')
+#LCs.lightcurves(time_bin = [0.00694,0.02083], type_file = 'lc_types_rep', gap_file = 'lc_gaps', save_fits = True, extract_field = False)
 # CBV VALIDATION
-CBVs(cm).validate()
+#CBVs(cm).validate(custom_types='lc_types',time_out = 200)
+
 # Lightcurve visualization
-#LCs = Visualize(data=cm, plot_name='EMS', plot_key='dmag', rows_page=7, cols_page=3,join_pages=False, output_format='png')
-#LCs.lightcurves(stitched=False, bin_size = '10m', models=True)
+LCs = Visualize(data=cm, plot_name='v4_ems', plot_key='flux', rows_page=6, cols_page=5, output_format='png')
+LCs.lightcurves(stitched=False, bin_size = '10m', models=False, trend = True)
 
 
 time_metrics = ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']

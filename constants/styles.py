@@ -8,8 +8,8 @@ plot_BREs  = {'ms' : 12, 'c' : 'k', 'marker' : 'p', 'mew': 0.7, 'ls': 'None', 'm
 plot_cLBV = {'ms' : 16, 'c' : 'k', 'marker' :'$\u25cc$', 'ls': 'None', 'mfc' : 'None'}
 plot_cBRC  = {'ms' : 15, 'c' : 'k', 'marker' : '$\u2b1a$', 'ls': 'None', 'mfc' : 'None'}
 
-PLOT_XLC_NCOL = 2
-PLOT_XLC_NROW = 5
+PLOT_XLC_NCOL = 1  #2
+PLOT_XLC_NROW = 4  #5
 
 PLOT_XLABEL =   { 
 		'lc' : r'Time $-$ 2457000 [BTJD d]',
@@ -32,7 +32,7 @@ SIZE_YLABEL_FIG = 22
 SIZE_XLABEL_SUB = 11
 SIZE_YLABEL_SUB = 11
 
-SIZE_GRID = (16,20)
+SIZE_GRID = (26,20)#(16,20)
 
 PLOT_PARAMS =	{
 'lc'		:

@@ -12,6 +12,9 @@ from astroquery.vizier import Vizier
 from astropy.io import fits
 import signal
 from contextlib import contextmanager
+from astropy.units import Quantity
+from scipy.interpolate import interp1d
+
 
 class Gaia(object):
 
@@ -286,23 +289,34 @@ def mask_outliers(m_arr, m = 3.):
 
     return x
 	
-def set_nans(time,flux,gaps):    
-  
-    if len(gaps) != 4:
+def set_nans(time, flux, gaps, custom = None):
+    
+    if custom != None:
+        for g in custom:
+            if len(g) != 2:                
+                print('Nan intervals should have two values.')   
+                
+                return flux
+            else:
+                nanmask = (time >= float(g[0])) & (time <= float(g[1]))
+                flux[nanmask] = np.nan
+                
+        return flux       
+        
+    else:
+        if len(gaps) != 4:
+            return flux
+        
+        gb,gl,gu,ge = gaps
+        time_dif = time[1:] - time[:-1]
+        ind_nan = np.argmax(time_dif)
+        flux[ind_nan-gl:ind_nan+gu] = np.nan
+        
+        if gb > 0: flux[:gb] = np.nan
+        if ge > 0: flux[-ge:] = np.nan
         
         return flux
     
-    gb,gl,gu,ge = gaps
-    time_dif = time[1:] - time[:-1]
-    ind_nan = np.argmax(time_dif)
-    flux[ind_nan-gl:ind_nan+gu] = np.nan
-    
-    if gb > 0: flux[:gb] = np.nan
-    if ge > 0: flux[-ge:] = np.nan
-    
-    return flux
-
-
 def fill_array(a, fillvalue = 0):
 
 	import itertools
@@ -329,13 +343,15 @@ def remove_slow_lcs(files):
             
     return files
 
-def normalize(lc, deg = 2, flux_key ="pdcsap_flux", coeff = None):    
+def normalize(lc, deg = 2, coeff = None):
+    
+    print(isinstance(lc, lk.LightCurve) is True)
    
     if isinstance(lc, lk.LightCurve):
         time = lc.time.value
-        flux = lc[flux_key].value
+        flux = lc.flux.value
         try:
-            flux_err = lc[flux_key+"_err"].value
+            flux_err = lc.flux_err.value
         except:
             flux_err = np.zeros(len(flux))
             
@@ -368,6 +384,47 @@ def normalize(lc, deg = 2, flux_key ="pdcsap_flux", coeff = None):
                        names=['nflux','nflux_err','dmag','dmag_err','fitmodel'])
 
     return new_lc, coeff
+
+
+def normalize_break(lc, deg=2, break_tolerance = 5, sigma = 3):
+    
+    lc = lc.remove_nans()
+
+    if isinstance(lc, lk.LightCurve):
+        time = lc.time.value
+        flux = lc.flux.value
+        try:
+            flux_err = lc.flux_err.value
+        except:
+            flux_err = np.zeros(len(flux))
+            
+    elif isinstance(lc, np.ndarray):
+        time = lc[0]
+        flux = lc[1]
+        if lc.shape[0] > 2:
+            flux_err = lc[2]
+        else:
+            flux_err = np.zeros(len(flux))
+            
+    dt = time[1:] - time[0:-1]
+    cut = np.where(dt > break_tolerance * np.nanmedian(dt))[0] + 1
+    low = np.append([0], cut)
+    high = np.append(cut, len(time))   
+    
+    flux_fit = lk.LightCurve(time=time, flux = np.zeros(len(time)))
+    
+    for l, h in zip(low, high):        
+        coeff = np.ma.polyfit(time[l:h], flux[l:h], deg)
+        p = np.poly1d(coeff)
+        
+        flux_fit.flux[l:h] = p(time[l:h])
+        flux_fit.flux[l] = np.nan
+        
+    new_lc = lc.copy()
+    new_lc.flux = new_lc.flux / flux_fit.flux
+    new_lc.flux_err = new_lc.flux_err / flux_fit.flux
+    
+    return new_lc, flux_fit
 
 # TODO - make the following as static methods 
 

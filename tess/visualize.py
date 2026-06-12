@@ -43,6 +43,7 @@ class Visualize(GridTemplate):
     def lightcurves(self, 
                     stitched = False, 
                     models = False,
+                    trend = False,
                     bin_size = None, 
                     **kwargs):
         
@@ -111,12 +112,12 @@ class Visualize(GridTemplate):
                          
                          ax = self.GridAx()
                          
-                         plot_lc_single(ax, r, m='.', flux_key = self.plot_key, lc_type = r.header['PIPELINE'])
-                         plot_lc_single(ax, b, flux_key = self.plot_key, lc_type = 'binned')
+                         #plot_lc_single(ax, r, m='.', flux_key = self.plot_key, lc_type = r.header['PIPELINE'])
+                         plot_lc_single(ax, b, flux_key = self.plot_key, trend= trend, lc_type = 'binned')
                          if models:
                              mod_hdu = hdu_mods[i]
                              plot_mod_single(ax, mod_hdu, ref_hdu = b, ls='--', lw=1.3)
-                         
+                  
                          add_plot_features(ax, mode = self.plot_key,
                                            upper_left=star, lower_left=spc,
                                            lower_right='{} ({})'.format(tic,sect))
