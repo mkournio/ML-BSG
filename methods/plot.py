@@ -50,17 +50,13 @@ def plot_lc_single(ax,
     else:
         raise TypeError('Object light curve does not have supportive format!')
 
-    #ax.plot(time,flux,m,c = LC_COLOR[lc_type])
+    ax.plot(time,flux,m,c = LC_COLOR[lc_type])
     if trend:
         if flux_key != "flux":
             print('Trend is only available for the raw lightcurve.')
         else:
-            if not isinstance(lc, lk.LightCurve):
-                lc = lk.LightCurve(time=time,flux=flux,flux_err=flux_err)
-            lcn, trend = normalize_break(lc, deg=2, break_tolerance = 200)
-            #ax.plot(trend.time.value, trend.flux, 'r-')
-            ax.plot(lcn.time.value, lcn.flux, m, c = LC_COLOR[lc_type])
-  
+            ax.plot(time, lc.data['trend'], 'r-')
+ 
     return ax
 
 def plot_lc_multi(axes,

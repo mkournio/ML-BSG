@@ -15,7 +15,6 @@ from contextlib import contextmanager
 from astropy.units import Quantity
 from scipy.interpolate import interp1d
 
-
 class Gaia(object):
 
     def __init__(self,tpf,cat='Gaia3'):
@@ -343,10 +342,8 @@ def remove_slow_lcs(files):
             
     return files
 
-def normalize(lc, deg = 2, coeff = None):
-    
-    print(isinstance(lc, lk.LightCurve) is True)
-   
+def normalize(lc, deg = 2, coeff = None):    
+  
     if isinstance(lc, lk.LightCurve):
         time = lc.time.value
         flux = lc.flux.value
@@ -362,6 +359,9 @@ def normalize(lc, deg = 2, coeff = None):
             flux_err = lc[2]
         else:
             flux_err = np.zeros(len(flux))
+    else:
+        print('Incomatible LC form, aborting..')
+        return
     
     mask_nan = np.isfinite(flux)
     flux = np.ma.array(flux, mask=~mask_nan)
@@ -378,7 +378,7 @@ def normalize(lc, deg = 2, coeff = None):
     nflux = np.where(nflux.mask,np.nan,nflux)
     dm = -2.5 * np.log10(nflux)
     e_dm = 2.5 * flux_err / (LN10*flux)
-    
+
     new_lc = lk.LightCurve(time=time, flux=flux, flux_err = flux_err)
     new_lc.add_columns([nflux,e_nflux,dm,e_dm,flux_fit],
                        names=['nflux','nflux_err','dmag','dmag_err','fitmodel'])
@@ -386,10 +386,8 @@ def normalize(lc, deg = 2, coeff = None):
     return new_lc, coeff
 
 
-def normalize_break(lc, deg=2, break_tolerance = 5, sigma = 3):
+def normalize_break(lc, deg = 2, break_tolerance = 150, sigma = 3):
     
-    lc = lc.remove_nans()
-
     if isinstance(lc, lk.LightCurve):
         time = lc.time.value
         flux = lc.flux.value
@@ -405,26 +403,37 @@ def normalize_break(lc, deg=2, break_tolerance = 5, sigma = 3):
             flux_err = lc[2]
         else:
             flux_err = np.zeros(len(flux))
-            
+
+    mask = np.abs(lc.flux - np.nanmedian(lc.flux)) <= (np.nanstd(lc.flux) * sigma)
+    time = time[mask]
+    flux = flux[mask]
+    
     dt = time[1:] - time[0:-1]
     cut = np.where(dt > break_tolerance * np.nanmedian(dt))[0] + 1
     low = np.append([0], cut)
     high = np.append(cut, len(time))   
     
-    flux_fit = lk.LightCurve(time=time, flux = np.zeros(len(time)))
-    
+    trend = np.zeros(len(time))
     for l, h in zip(low, high):        
         coeff = np.ma.polyfit(time[l:h], flux[l:h], deg)
-        p = np.poly1d(coeff)
-        
-        flux_fit.flux[l:h] = p(time[l:h])
-        flux_fit.flux[l] = np.nan
-        
-    new_lc = lc.copy()
-    new_lc.flux = new_lc.flux / flux_fit.flux
-    new_lc.flux_err = new_lc.flux_err / flux_fit.flux
+        p = np.poly1d(coeff)        
+        trend[l:h] = p(time[l:h])
+        trend[l] = np.nan        
+    f = interp1d(time, trend, fill_value="extrapolate")
+    trend = Quantity(f(lc.time.value), unit = lc.flux.unit)
+
+    norm_lc = lc.copy()
+    norm_lc.flux = norm_lc.flux / trend
+    norm_lc.flux_err = norm_lc.flux_err / trend
     
-    return new_lc, flux_fit
+    dm = -2.5 * np.log10(norm_lc.flux)
+    e_dm = 2.5 * norm_lc.flux_err / (LN10 * norm_lc.flux)
+
+    new_lc = lk.LightCurve(time=lc.time,flux=lc.flux,flux_err=lc.flux_err)
+    new_lc.add_columns([norm_lc.flux,norm_lc.flux_err,dm,e_dm,trend],
+                       names=['nflux','nflux_err','dmag','dmag_err','trend'])
+    
+    return new_lc
 
 # TODO - make the following as static methods 
 

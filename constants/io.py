@@ -18,6 +18,7 @@ flux_units = {
     'flux': 'e-/s',
     'flux_err': 'e-/s',
     'fitmodel': 'e-/s',
+    'trend': 'e-/s',
     'nflux': '',
     'nflux_err': '',
     'dmag': 'mag',

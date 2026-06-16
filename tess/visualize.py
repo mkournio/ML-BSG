@@ -112,8 +112,8 @@ class Visualize(GridTemplate):
                          
                          ax = self.GridAx()
                          
-                         #plot_lc_single(ax, r, m='.', flux_key = self.plot_key, lc_type = r.header['PIPELINE'])
-                         plot_lc_single(ax, b, flux_key = self.plot_key, trend= trend, lc_type = 'binned')
+                         plot_lc_single(ax, r, m='.', flux_key = self.plot_key, lc_type = r.header['PIPELINE'])
+                         plot_lc_single(ax, b, flux_key = self.plot_key, trend = trend, lc_type = 'binned')
                          if models:
                              mod_hdu = hdu_mods[i]
                              plot_mod_single(ax, mod_hdu, ref_hdu = b, ls='--', lw=1.3)

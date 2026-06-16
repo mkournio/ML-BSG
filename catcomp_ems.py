@@ -36,10 +36,7 @@ cm = cm[LOC]
 #      ]
 
 
-#cm = cm[[np.where(cm['STAR']==n)[0][0] for n in sn]]
-#print(cm)
-
-#r = np.where(cm['STAR']=='CD-42 11721')[0][0]
+#r = np.where(cm['STAR']=='HR Car')[0][0]
 #cm = cm[r:r+1]
 #cm = cm[:1]
 
@@ -64,15 +61,15 @@ cm = cm[LOC]
 
 
 # LIGHTVURVE EXTRACTION - FITS CREATION
-#LCs = Extract(data=cm, plot_key='dmag',plot_name='x3_ems', output_format='png')
-#LCs.lightcurves(time_bin = [0.00694,0.02083], type_file = 'lc_types_rep', gap_file = 'lc_gaps', save_fits = True, extract_field = False)
+LCs = Extract(data=cm, plot_key='flux',plot_name='x_ems', output_format='png')
+LCs.lightcurves(time_bin = [0.00694], type_file = 'lc_types', gap_file = 'lc_gaps', save_fits = True, extract_field = False)
 # CBV VALIDATION
 #CBVs(cm).validate(custom_types='lc_types',time_out = 200)
 
 # Lightcurve visualization
-LCs = Visualize(data=cm, plot_name='v4_ems', plot_key='flux', rows_page=6, cols_page=5, output_format='png')
-LCs.lightcurves(stitched=False, bin_size = '10m', models=False, trend = True)
-
+#LCs = Visualize(data=cm, plot_name='v5_ems', plot_key='flux', rows_page=6, cols_page=5, output_format='png')
+#LCs.lightcurves(stitched=False, bin_size = '10m', models=False, trend = True)
+os.system('shutdown -s')
 
 time_metrics = ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
 frequency_metrics = ['TOP','HPR','WFM','WFD','SEN']

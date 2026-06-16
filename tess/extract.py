@@ -424,18 +424,18 @@ class Extract(GridTemplate):
                          if int(r[0]) == tic and int(r[1]) == sectn:
                              sect_gaps.append([float(r[2]), float(r[3])])
        
-             custom_type = None
+             sect_type = None
              ndeg = 2
              if type_file != None:
                  with open(type_file) as tf:
                      for tr in tf:
                          r = tr.split()
                          if int(r[0]) == tic and int(r[1]) == sectn:
-                             custom_type = r[3]
+                             sect_type = r[3]
                              ndeg = int(r[4]) 
                              
              ax_lc = self._extract_lc(path_to_input_file, time_bin,
-                                      custom_type=custom_type, ndeg = ndeg, 
+                                      lc_type = sect_type, ndeg = ndeg, 
                                       gaps = sect_gaps, **kwargs)
              if ax_lc != None:
                  add_plot_features(ax_lc, mode = self.plot_key, upper_left=star,
@@ -470,7 +470,7 @@ class Extract(GridTemplate):
             self,
             path_to_input_file,
             time_bin,
-            custom_type = None,
+            lc_type = None,
             ndeg = 2,
             gaps = [],
             **kwargs):
@@ -493,36 +493,44 @@ class Extract(GridTemplate):
             
         lc = lc.remove_nans()
      
-        print(f'LC type, ndeg, gaps: {custom_type} {ndeg} {gaps}')                
-        if (custom_type in [None,'SAP+']) or ('*' in custom_type):
+        print(f'LC type, ndeg, gaps: {lc_type} {ndeg} {gaps}')                
+        if (lc_type in [None,'SAP+']) or ('*' in lc_type):
             try:
                 lc.flux = CBVs.cbv_correct(lc) * lc.flux.unit
             except lk.LightkurveError :
                 print('Lightcurve not CBV corrected.')
-                pass            
-        elif custom_type == 'PDCSAP':
-            lc.flux = lc.pdcsap_flux             
-        elif (custom_type == 'LQ') or ('CRW' in custom_type):
+                pass    
+            
+        elif lc_type == 'PDCSAP':
+            
+            lc.flux = lc.pdcsap_flux       
+            
+        elif (lc_type == 'LQ') or ('CRW' in lc_type):
             
             return None
         
         # Normalize raw by the polynomial fitting the binned light curve
         bcoeff = None
+        d_tolerance = 2.
         binned_lcs = []
         
         if len(time_bin) > 0:
             time_bin = sorted(time_bin, reverse = True)            
             lcb = lc.bin(time_bin_size = time_bin[0])
-            n_lcb, bcoeff = normalize(lcb, deg = ndeg)
+            n_lcb = normalize_break(lcb, break_tolerance = d_tolerance / time_bin[0] )
+           # n_lcb, bcoeff = normalize(lcb, deg = ndeg)
             binned_lcs.append(n_lcb)
             
-            for t in time_bin[1:]:
-                lcb = lc.bin(time_bin_size = t)
-                n_lcb, _ = normalize(lcb, deg = ndeg, coeff = bcoeff)
+            for dt in time_bin[1:]:
+                lcb = lc.bin(time_bin_size = dt)
+                #n_lcb, _ = normalize(lcb, deg = ndeg, coeff = bcoeff)
+                n_lcb = normalize_break(lcb, break_tolerance = d_tolerance / dt )
                 binned_lcs.append(n_lcb)
                 
         # RAW - UNBINNED     
-        n_lc, _ = normalize(lc,  deg = ndeg, coeff = bcoeff)
+        #n_lc, _ = normalize(lc,  deg = ndeg, coeff = bcoeff)
+        raw_dt = np.nanmedian(lc.time[1:]-lc.time[0:-1]).value
+        n_lc = normalize_break(lc, break_tolerance = d_tolerance / raw_dt )
         
         if kwargs.get('save_fits'):
             lc_fits = fits.open(path_to_input_file)
@@ -538,7 +546,7 @@ class Extract(GridTemplate):
             plot_lc_single(ax_lc, binned_lcs[0], flux_key = self.plot_key, lc_type = 'binned')
             
         if self.plot_key == 'flux':
-            plot_lc_single(n_lc, ax=ax_lc, flux_key = 'fitmodel', m = '--', lc_type = 'fit')            
+            plot_lc_single(ax_lc, n_lc, flux_key = 'trend', m = '--', lc_type = 'fit')            
         
         return ax_lc
     
