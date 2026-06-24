@@ -348,7 +348,7 @@ class Extract(GridTemplate):
      self._validate()     
      
      # probably the following line should move  to lightcurves functions
-     super().__init__(rows_page = PLOT_XLC_NROW, cols_page = PLOT_XLC_NCOL,
+     super().__init__(#rows_page = PLOT_XLC_NROW, cols_page = PLOT_XLC_NCOL,
                   #    fig_xlabel= PLOT_XLABEL['lc'], fig_ylabel=PLOT_YLABEL[plot_key], 
                       **kwargs)
      
@@ -416,27 +416,27 @@ class Extract(GridTemplate):
                  path_to_input_file = os.path.join(path_to_tess_spoc_files, tspoc_f[0], tspoc_f[0][:-3]+'_lc.fits')
                  print('{}: extracting Sector {} of TIC {} (TESS-SPOC)'.format(star,sect,tic))
               
-             sect_gaps = []
              if gap_file != None:
+                 sect_gaps = []
                  with open(gap_file) as gf:
                      for gr in gf:
                          r = gr.split()
                          if int(r[0]) == tic and int(r[1]) == sectn:
                              sect_gaps.append([float(r[2]), float(r[3])])
+                 kwargs['gaps'] = sect_gaps                 
        
-             sect_type = None
-             ndeg = 2
              if type_file != None:
                  with open(type_file) as tf:
                      for tr in tf:
                          r = tr.split()
                          if int(r[0]) == tic and int(r[1]) == sectn:
-                             sect_type = r[3]
-                             ndeg = int(r[4]) 
+                             kwargs['lc_type'] = r[3]
+                             kwargs['break_tolerance'] = float(r[5])
+                             kwargs['sigma'] = float(r[6])
+                             kwargs['break_mid'] = float(r[7])    
+                             kwargs['w_flat'] = float(r[8])
                              
-             ax_lc = self._extract_lc(path_to_input_file, time_bin,
-                                      lc_type = sect_type, ndeg = ndeg, 
-                                      gaps = sect_gaps, **kwargs)
+             ax_lc = self._extract_lc(path_to_input_file, time_bin, **kwargs)
              if ax_lc != None:
                  add_plot_features(ax_lc, mode = self.plot_key, upper_left=star,
                                       lower_left=spc,lower_right='{} ({})'.format(tic,sect))
@@ -471,7 +471,6 @@ class Extract(GridTemplate):
             path_to_input_file,
             time_bin,
             lc_type = None,
-            ndeg = 2,
             gaps = [],
             **kwargs):
         
@@ -487,13 +486,25 @@ class Extract(GridTemplate):
         lc0 = lc0[lc0.quality==0]
         lc = lc0.copy()
         
+        if 'gaps' in kwargs:
+            gaps = kwargs['gaps']
+        if 'lc_type' in kwargs:
+            lc_type = kwargs['lc_type']
+            
+        print(f'CBV corr: {lc_type}')  
+        print(f'Gaps: {gaps}')
+        if 'w_flat' in kwargs and kwargs['w_flat'] > 0:
+            print('Flattening: SG filter')
+        elif 'break_tolerance' in kwargs:
+            brt = kwargs['break_tolerance']; sgm = kwargs['sigma']
+            brm = kwargs['break_mid']
+            print(f'Flattening: polynomials, param. {brt} {sgm} {brm} ')  
+            
         for n in gaps:
             mask = (lc.time.value > n[0]) & (lc.time.value < n[1])
-            lc.flux[mask] = np.nan  
-            
-        lc = lc.remove_nans()
-     
-        print(f'LC type, ndeg, gaps: {lc_type} {ndeg} {gaps}')                
+            lc.flux[mask] = np.nan                
+        lc = lc.remove_nans() 
+        
         if (lc_type in [None,'SAP+']) or ('*' in lc_type):
             try:
                 lc.flux = CBVs.cbv_correct(lc) * lc.flux.unit
@@ -510,27 +521,25 @@ class Extract(GridTemplate):
             return None
         
         # Normalize raw by the polynomial fitting the binned light curve
-        bcoeff = None
-        d_tolerance = 2.
+        bcoeff = None        
         binned_lcs = []
         
         if len(time_bin) > 0:
             time_bin = sorted(time_bin, reverse = True)            
             lcb = lc.bin(time_bin_size = time_bin[0])
-            n_lcb = normalize_break(lcb, break_tolerance = d_tolerance / time_bin[0] )
+            n_lcb = normalize_break(lcb, **kwargs)
            # n_lcb, bcoeff = normalize(lcb, deg = ndeg)
             binned_lcs.append(n_lcb)
             
             for dt in time_bin[1:]:
                 lcb = lc.bin(time_bin_size = dt)
                 #n_lcb, _ = normalize(lcb, deg = ndeg, coeff = bcoeff)
-                n_lcb = normalize_break(lcb, break_tolerance = d_tolerance / dt )
+                n_lcb = normalize_break(lcb, **kwargs)
                 binned_lcs.append(n_lcb)
                 
         # RAW - UNBINNED     
         #n_lc, _ = normalize(lc,  deg = ndeg, coeff = bcoeff)
-        raw_dt = np.nanmedian(lc.time[1:]-lc.time[0:-1]).value
-        n_lc = normalize_break(lc, break_tolerance = d_tolerance / raw_dt )
+        n_lc = normalize_break(lc, **kwargs)
         
         if kwargs.get('save_fits'):
             lc_fits = fits.open(path_to_input_file)
@@ -543,11 +552,8 @@ class Extract(GridTemplate):
         ax_lc = self.GridAx()
         plot_lc_single(ax_lc, n_lc, flux_key = self.plot_key, lc_type = pipeline, m = '.')
         if len(time_bin) > 0:
-            plot_lc_single(ax_lc, binned_lcs[0], flux_key = self.plot_key, lc_type = 'binned')
-            
-        if self.plot_key == 'flux':
-            plot_lc_single(ax_lc, n_lc, flux_key = 'trend', m = '--', lc_type = 'fit')            
-        
+            plot_lc_single(ax_lc, binned_lcs[0], flux_key = self.plot_key, lc_type = 'binned', trend = True)
+          
         return ax_lc
     
     def header_key(self, 

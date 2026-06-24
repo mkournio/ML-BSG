@@ -13,17 +13,21 @@ from astropy.io import fits
 import warnings
 import lightkurve as lk
 import sys
+from wotan import flatten
 
 def plot_lc_single(ax, 
                    lc,
                    m = '',
                    flux_key ="flux",
                    lc_type = 'any',
-                   trend = False,
+                   prop_args = [],
                    **kwargs):
     
     if lc is None:
         return
+    
+    trend = kwargs.get('trend', False)
+    med_norm = kwargs.get('med_norm', False)    
     
     if ax is None:
      _, ax = plt.subplots()    
@@ -49,14 +53,54 @@ def plot_lc_single(ax,
             flux_err = lc[2]
     else:
         raise TypeError('Object light curve does not have supportive format!')
-
-    ax.plot(time,flux,m,c = LC_COLOR[lc_type])
+        
     if trend:
-        if flux_key != "flux":
-            print('Trend is only available for the raw lightcurve.')
+        try:
+            tr_flux = lc.data['trend']
+        except:
+            tr_flux = lc.trend
+        
+    if med_norm:
+        if trend:
+            tr_flux = tr_flux / np.nanmedian(flux)            
+        flux = flux / np.nanmedian(flux)
+                
+    ax.plot(time,flux,m,c = LC_COLOR[lc_type])
+    if trend and flux_key == 'flux' and lc_type == 'binned':
+        ax.plot(time,tr_flux,'--', c = LC_COLOR['fit'])
+                
+        #lc2 = lk.LightCurve(time=time, flux=flux, flux_err = flux_err)
+        #window_length = int(13. / 0.0069)
+        #break_tolerance = int(15. / 0.0069)
+        #lcf, trend = lc2.flatten(window_length = window_length,
+        #                         break_tolerance= break_tolerance,
+        #                         return_trend=True)
+       # lcfm = -2.5*np.log10(lcf.flux)
+       # lcpm = -2.5*np.log10(lc.data['nflux'])        
+        #ax.plot(lcf.time.value, lcf.flux, 'r-', lw=1.5)
+        #ax.plot(trend.time.value, trend.flux, 'r-', lw=1.5)
+
+        '''if len(prop_args) != 0:
+            lcp = normalize_break(lc2,  break_tolerance = prop_args[0], 
+                                  sigma = prop_args[1], break_mid = prop_args[2])
         else:
-            ax.plot(time, lc.data['trend'], 'r-')
- 
+            lcp = normalize_break(lc2)
+        
+        if flux_key == 'nflux':
+            ax.plot(time, lcp.nflux, 'r--')
+        elif flux_key == 'flux':
+            ax.plot(time, lcp.trend, 'r--')'''
+
+        
+     #   wf,wt = flatten(time, flux, 
+      #                  window_length=10, 
+       #                 break_tolerance = 0.5, method='biweight', return_trend=True)
+       # ax.plot(time, wf, 'c-', lw=1.5)
+       # ax.plot(time, wt, 'c-', lw=1.5)
+
+
+        #ax.invert_yaxis() 
+        
     return ax
 
 def plot_lc_multi(axes,
@@ -245,6 +289,12 @@ def add_plot_features(ax,mode = 'flux',upper_left='',lower_left='',lower_right='
     ax[-1].text(0.6,0.05,lower_right,color='b',fontsize=SIZE_FONT_SUB,transform=ax[-1].transAxes)
     ax[-1].text(0.6,0.85,upper_right,color='k',fontsize=SIZE_FONT_SUB,transform=ax[-1].transAxes)  
     
+    if mode == 'nflux':
+        for ax_d in ax:
+            ylims = ax_d.get_ylim()            
+            ylims = [min(0.999,ylims[0]), max(1.001,ylims[1])]
+            ax_d.set_ylim(ylims)
+        
     return ax
 
 def get_filename(fname,fformat):
@@ -418,7 +468,7 @@ class GridTemplate(object):
         if self.inter:
             plt.show(block=True)
             
-        self.fig.clf()
+       # self.fig.clf()
         plt.close(self.fig)
         
         return

@@ -25,65 +25,39 @@ cm.sort(['RA'])
 LOC = [('MW' in x) for x in cm['GAL']]
 #LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
 cm = cm[LOC]
-#cm = cm[:3]
-#sn = ['Hen3-298',
-#      'HD96918',
-#      'V432 Car',
-#      'HR5171',
-#      'CD-42 11721',
-#      'HR8752',
-#      '6 CAS'    
-#      ]
 
-
-#r = np.where(cm['STAR']=='HR Car')[0][0]
-#cm = cm[r:r+1]
+r = np.where(cm['STAR']=='RHO CAS')[0][0]
+cm = cm[r:r+1]
 #cm = cm[:1]
 
-
 ################ QUERYING FROM MAST
+# LIGHTUCRVES
 #mast_query(cm, download_dir='data/')
+# TPFs
 #mast_query(cm, product="Targetpixelfile")
-
-# DOWNLOAD CBVs
-#download_cbvs(cm)
-
-# DOWNLOAD TPFs - 
 #download_tpfs(cm, frame = 0, del_original = True)
-
-#print(cm.columns)
-#print(cm['STAR','SpC','TEFF','MK'].pprint(max_lines=-1,max_width=-1))
-
-#18/10 stop: MASSJ05045052-7038229: extracted Sector s0027 of TIC 31006657 (SPOC)
-#r=np.where(cm['STAR']=='IRC+10420')[0][0];  print(r)
-#cm = cm[r:r+1]
-
-
-
-# LIGHTVURVE EXTRACTION - FITS CREATION
-LCs = Extract(data=cm, plot_key='flux',plot_name='x_ems', output_format='png')
-LCs.lightcurves(time_bin = [0.00694], type_file = 'lc_types', gap_file = 'lc_gaps', save_fits = True, extract_field = False)
+# CBVS
+#download_cbvs(cm)
 # CBV VALIDATION
 #CBVs(cm).validate(custom_types='lc_types',time_out = 200)
 
-# Lightcurve visualization
-#LCs = Visualize(data=cm, plot_name='v5_ems', plot_key='flux', rows_page=6, cols_page=5, output_format='png')
-#LCs.lightcurves(stitched=False, bin_size = '10m', models=False, trend = True)
-os.system('shutdown -s')
 
-time_metrics = ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
-frequency_metrics = ['TOP','HPR','WFM','WFD','SEN']
-rn_metrics = ['W0','R0','TAU','GAMMA']
+############# EXTRACTION 
+# TIME DOMAIN
 
-##### RESETING - REMOVING
-#fl = FitsList(cm)
-#fl.add_header_keys(key_dict={'HDUTYPE':'LIGHTCURVE'})
-#fl.remove_header_keys(keys = frequency_metrics)
-#fl.remove_hdu(hdutypes=['FREQUENCIES','PERIODOGRAMS'])
-
-##### FREQUENCY DOMAIN EXTRACTION
+LCs = Extract(data=cm, 
+              plot_key='flux',
+              plot_name='x3_ems', 
+              rows_page = 4, cols_page = 1,
+              output_format='png')
+LCs.lightcurves(time_bin = [0.00694],
+                type_file = 'lc_types', 
+                gap_file = 'lc_gaps', 
+                save_fits = True, extract_field = False)
+#'''
+# FREQUENCY DOMAIN
 #PGs = Extract(data=cm, 
-#              plot_name='LS_EMS', 
+#              plot_name='xf_ems', 
 #              fig_xlabel = '', fig_ylabel = '', 
 #              figsize = (12,22),
 #              output_format='png')
@@ -91,12 +65,42 @@ rn_metrics = ['W0','R0','TAU','GAMMA']
 #                 term_sn=3.9,
 #                 maximum_frequency=40)
 
+############# VISUALIZATION
+# LIGHTCURVES
+#'''
+LC = Visualize(data=cm,
+                plot_name='v12_ems', 
+                plot_key='nflux', 
+                rows_page=6, 
+                cols_page=5, 
+                output_format='png')
+LC.lightcurves(stitched=False, 
+                bin_size = '10m', 
+                models=False, 
+                med_norm = False,
+                trend = True)
+#'''
+# MODEL FITS
+#LS = 
 
-##### TIME-DOMAIN MEASURES
+# PERIODOGRAMS
+
+
+############# METRICS
+time_metrics = ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
+frequency_metrics = ['TOP','HPR','WFM','WFD','SEN']
+rn_metrics = ['W0','R0','TAU','GAMMA']
+# RESETING - REMOVING
+#fl = FitsList(cm)
+#fl.add_header_keys(key_dict={'HDUTYPE':'LIGHTCURVE'})
+#fl.remove_header_keys(keys = frequency_metrics)
+#fl.remove_hdu(hdutypes=['FREQUENCIES','PERIODOGRAMS'])
+
+# TIME DOMAIN
 #td = TimeDomain(data = cm, measures = time_metrics).calculate(bin_size = '10m')
-
-##### FREQUENCY-DOMAIN MEASURES
+# FREQUENCY DOMAIN
 #fd = FrequencyDomain(data = cm, measures = frequency_metrics).calculate(bin_size = '10m', min_freq = 2/27.)
+
 
 '''
 meta_keys = ['STAR','TIC','TEFF','LOGL','JK','MJ','MG','SpC']

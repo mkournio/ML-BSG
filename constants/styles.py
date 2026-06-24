@@ -120,7 +120,7 @@ LC_COLOR = 	{
         'model' : 'r',
         'binned': 'k',
 		'tesscut'	 : 'r',
-        'fit': 'k',
+        'fit': 'r',
         'raw': 'pink',
 		'any': 'k'
 		}

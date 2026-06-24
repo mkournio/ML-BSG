@@ -14,6 +14,7 @@ import signal
 from contextlib import contextmanager
 from astropy.units import Quantity
 from scipy.interpolate import interp1d
+from scipy.signal import savgol_filter
 
 class Gaia(object):
 
@@ -386,52 +387,69 @@ def normalize(lc, deg = 2, coeff = None):
     return new_lc, coeff
 
 
-def normalize_break(lc, deg = 2, break_tolerance = 150, sigma = 3):
+def normalize_break(lc, deg = 2, break_tolerance = 1., sigma = 3, break_mid = False, edge_ignore = 0., **kwargs):
     
-    if isinstance(lc, lk.LightCurve):
-        time = lc.time.value
-        flux = lc.flux.value
-        try:
-            flux_err = lc.flux_err.value
-        except:
-            flux_err = np.zeros(len(flux))
-            
-    elif isinstance(lc, np.ndarray):
-        time = lc[0]
-        flux = lc[1]
+    if isinstance(lc, np.ndarray):
         if lc.shape[0] > 2:
             flux_err = lc[2]
         else:
-            flux_err = np.zeros(len(flux))
-
-    mask = np.abs(lc.flux - np.nanmedian(lc.flux)) <= (np.nanstd(lc.flux) * sigma)
-    time = time[mask]
-    flux = flux[mask]
-    
-    dt = time[1:] - time[0:-1]
-    cut = np.where(dt > break_tolerance * np.nanmedian(dt))[0] + 1
-    low = np.append([0], cut)
-    high = np.append(cut, len(time))   
-    
-    trend = np.zeros(len(time))
-    for l, h in zip(low, high):        
-        coeff = np.ma.polyfit(time[l:h], flux[l:h], deg)
-        p = np.poly1d(coeff)        
-        trend[l:h] = p(time[l:h])
-        trend[l] = np.nan        
-    f = interp1d(time, trend, fill_value="extrapolate")
-    trend = Quantity(f(lc.time.value), unit = lc.flux.unit)
-
-    norm_lc = lc.copy()
-    norm_lc.flux = norm_lc.flux / trend
-    norm_lc.flux_err = norm_lc.flux_err / trend
+            flux_err = np.zeros(len(lc[1]))
+        lc = lk.LightCurve(time=lc[0], flux=lc[1], flux_err=flux_err)
+            
+    if 'w_flat' in kwargs and kwargs['w_flat'] > 0:
+        bin_size = np.nanmedian(lc.time[1:] - lc.time[0:-1]).value
+        window_length = int(kwargs['w_flat'] / bin_size)
+        norm_lc, trend = lc.flatten(window_length = window_length, return_trend = True, break_tolerance = break_tolerance)
+        trend = trend.flux
+    else:
+        mask = np.isfinite(lc.flux.value)
+        time = lc.time.value[mask]
+        flux = lc.flux.value[mask]
+        
+        dt = time[1:] - time[0:-1]
+        edge_ignore = int(edge_ignore/np.nanmedian(dt))
+        
+        if break_mid:
+            cut = [int(len(time)/2)]
+        else:
+            cut = np.where(dt > break_tolerance)[0] + 1
+            
+        low = np.append([0], cut)
+        high = np.append(cut, len(time))
+        if len(cut) == 0:
+            deg = 3
+        else:
+            deg = 2
+            
+        trend = np.zeros(len(time))
+        for l, h in zip(low, high):
+            
+            flux_seg = flux[l:h]
+            time_seg = time[l:h]
+            mask = np.abs(flux_seg - np.nanmedian(flux_seg)) <= (np.nanstd(flux_seg) * sigma)
+            if edge_ignore > 0 and h - l > 3 * edge_ignore:
+                mask[:edge_ignore] = False; mask[-edge_ignore:] = False
+                
+            coeff = np.ma.polyfit(time_seg[mask], flux_seg[mask], deg)
+            p = np.poly1d(coeff)
+            trend[l:h] = p(time_seg)
+            trend[l] = np.nan
+            
+        f = interp1d(time, trend, fill_value="extrapolate")
+        trend = Quantity(f(lc.time.value), unit = lc.flux.unit)
+        
+        norm_lc = lc.copy()
+        norm_lc.flux = norm_lc.flux / trend
+        norm_lc.flux_err = norm_lc.flux_err / trend
     
     dm = -2.5 * np.log10(norm_lc.flux)
     e_dm = 2.5 * norm_lc.flux_err / (LN10 * norm_lc.flux)
-
-    new_lc = lk.LightCurve(time=lc.time,flux=lc.flux,flux_err=lc.flux_err)
-    new_lc.add_columns([norm_lc.flux,norm_lc.flux_err,dm,e_dm,trend],
-                       names=['nflux','nflux_err','dmag','dmag_err','trend'])
+    
+    new_lc = lk.LightCurve(time=lc.time, flux=lc.flux, flux_err=lc.flux_err)
+    new_lc.add_columns([norm_lc.flux, norm_lc.flux_err, dm, e_dm, trend,
+                        lc.centroid_col, lc.centroid_row],
+                       names=['nflux','nflux_err','dmag','dmag_err','trend',
+                              'centroid_col','centroid_row'])
     
     return new_lc
 

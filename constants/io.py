@@ -23,4 +23,6 @@ flux_units = {
     'nflux_err': '',
     'dmag': 'mag',
     'dmag_err': 'mag',
+    'centroid_col': 'pix',
+    'centroid_row': 'pix'    
     }

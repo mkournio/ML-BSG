@@ -264,13 +264,10 @@ class FitsObject(object):
        if flux_err is not None :
         cols.append(fits.Column(name='flux_err',format="E",unit=flux_units['flux_err'],array=flux_err))
         
-       #try:
        extra_cols = [c for c in lc.columns if c not in ['time','flux','flux_err']]
        for c in extra_cols:
                cols.append(fits.Column(name=c,format="E",unit=flux_units[c],array=lc[c]))
-       #except:
-        #   pass           
-           
+              
        coldefs = fits.ColDefs(cols)
        hdu = fits.BinTableHDU.from_columns(coldefs) 
        hdu.header['HDUTYPE'] = 'LIGHTCURVE'
