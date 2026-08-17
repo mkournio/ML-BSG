@@ -12,7 +12,9 @@ PLOT_XLC_NCOL = 1  #2
 PLOT_XLC_NROW = 4  #5
 
 PLOT_XLABEL =   { 
-		'lc' : r'Time $-$ 2457000 [BTJD d]',
+		'flux' : r'Time $-$ 2457000 [BTJD d]',
+		'nflux' : r'Time $-$ 2457000 [BTJD d]',
+        'dmag' : r'Time $-$ 2457000 [BTJD d]',
 		'ls' : r'Frequency [d$^{-1}$]',
 		'sed': r'Wavelength (A)'
 		}
@@ -20,8 +22,8 @@ PLOT_XLABEL =   {
 PLOT_YLABEL =   {
     'flux' : 'Flux [e-/s]',
     'nflux': 'Normalized flux',
-    'ls' : r'Amplitude (mag)',
-    'dmag' : r'$\Delta$m [mag]'
+    'dmag' : r'$\Delta$m [mag]',
+    'ls' : r'Amplitude (mag)'
     }
         
 GAIA_UPMARK = 64

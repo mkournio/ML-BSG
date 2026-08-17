@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib import patches
 from constants.styles import *
 from methods.tools import check_header_key
-from methods.functions import round_to, fourier_series, normalize_break
+from methods.functions import round_to, fourier_series, normalize_break, lorentz
 import os
 from astropy.visualization import PercentileInterval, ImageNormalize, LinearStretch
 import numpy as np
@@ -54,21 +54,21 @@ def plot_lc_single(ax,
     else:
         raise TypeError('Object light curve does not have supportive format!')
         
-    if trend:
+    if med_norm:
+        flux = flux / np.nanmedian(flux)
+        
+    ax.plot(time,flux,m,c = LC_COLOR[lc_type])
+        
+    if trend and flux_key == 'flux' and lc_type == 'binned':
         try:
             tr_flux = lc.data['trend']
         except:
             tr_flux = lc.trend
-        
-    if med_norm:
-        if trend:
-            tr_flux = tr_flux / np.nanmedian(flux)            
-        flux = flux / np.nanmedian(flux)
-                
-    ax.plot(time,flux,m,c = LC_COLOR[lc_type])
-    if trend and flux_key == 'flux' and lc_type == 'binned':
+            
+        if med_norm:
+            tr_flux = tr_flux / np.nanmedian(tr_flux)            
         ax.plot(time,tr_flux,'--', c = LC_COLOR['fit'])
-                
+        
         #lc2 = lk.LightCurve(time=time, flux=flux, flux_err = flux_err)
         #window_length = int(13. / 0.0069)
         #break_tolerance = int(15. / 0.0069)
@@ -205,7 +205,40 @@ def plot_mod_multi(axes,
         
     return axes  
 
+def plot_ls_single(ax, 
+                   ls,
+                   model = None,
+                   **kwargs):    
+    if ls is None:
+        return
+    
+    if isinstance(ls, fits.BinTableHDU):
+        freq = ls.data['frequency']
+        ampl_ini = ls.data['ampl_ini']
+        ampl_end = ls.data['ampl_end']        
+    else:
+        return
+    
+    if ax is None:
+     _, ax = plt.subplots()        
 
+    ax.plot(freq,ampl_ini,'k')
+    ax.plot(freq,ampl_end,'0.6')
+    if isinstance(model, fits.BinTableHDU):
+        hdr = model.header
+        mod = model.data[-1]
+        rn_prop = [mod['W0'],mod['R0'],mod['TAU'],mod['GAMMA']]
+        ax.plot(freq,lorentz(freq,*rn_prop),'r')
+
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    
+    maxy = 4. * max(ampl_ini); miny = 2e-1 * np.nanmedian(ampl_end)    
+    ax.set_ylim([miny,maxy])
+    ax.set_xlim([0.07,freq[-1]])
+    
+    return ax
+    
 def plot_tess_field(field, ax = None, spoc_aperture = None, thr_aperture = None, **kwargs):
     
     # Plots TESS field from ImageHDU or ndarray
@@ -269,7 +302,7 @@ def plot_tess_field(field, ax = None, spoc_aperture = None, thr_aperture = None,
         
     return ax
 
-def add_plot_features(ax,mode = 'flux',upper_left='',lower_left='',lower_right='', upper_right='', y_min_max = None):
+def add_plot_features(ax,mode = 'flux',upper_left='',lower_left='',lower_right='', upper_right='', y_min_max = None, vlines = []):
      
     if not isinstance(ax,list):
         ax=[ax]
@@ -294,6 +327,12 @@ def add_plot_features(ax,mode = 'flux',upper_left='',lower_left='',lower_right='
             ylims = ax_d.get_ylim()            
             ylims = [min(0.999,ylims[0]), max(1.001,ylims[1])]
             ax_d.set_ylim(ylims)
+            
+    for v in vlines:
+        for ax_d in ax:
+            xlims = ax_d.get_xlim() 
+            if v > xlims[0] and v < xlims[1]:
+                ax_d.axvline(x=v)    
         
     return ax
 
@@ -310,7 +349,7 @@ def colorbar(vmin, vmax, cbar='rainbow', **kwargs):
     import matplotlib.cm as cm
     from matplotlib.colors import Normalize
     
-    cmap = cm.get_cmap(cbar).reversed()
+    cmap = cm.get_cmap(cbar)#.reversed()
     #cmap.set_under('white')
     norm = Normalize(vmin,vmax)
     

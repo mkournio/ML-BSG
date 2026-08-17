@@ -16,9 +16,22 @@ from methods.plot import GridTemplate, colorbar
 from astropy.table import Table
 from tables.io import tab_to_csv
 from pandas import DataFrame
+import pandas as pd
 from sklearn.preprocessing import StandardScaler, RobustScaler
 from sklearn.decomposition import PCA
-
+import matplotlib.cm as cm
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
+from sklearn.neighbors import KNeighborsClassifier, KNeighborsRegressor
+from sklearn.model_selection import LeaveOneOut, cross_val_predict
+from sklearn.metrics import (
+    accuracy_score,
+    balanced_accuracy_score,
+    confusion_matrix,
+    classification_report,
+    r2_score, 
+    mean_absolute_error
+)
 
 def apply_scaler(df,
            scaler_type = 'standard',
@@ -45,7 +58,15 @@ def apply_pca(df,
     print(f"Total explained variance: {pca.explained_variance_ratio_.sum():.3f}")
     print(f"Cumsum variance: {cumsum_variance}")
     
-    return feats_pca       
+    return feats_pca   
+
+def transform_variables(input_variables, **kwargs):
+    
+    variables= input_variables.rename(str,axis="columns")
+    scaled_variables = apply_scaler(variables,**kwargs)
+    pca_variables = apply_pca(scaled_variables,**kwargs)
+    
+    return pca_variables       
 
 class Features(DataFrame):
     
@@ -66,17 +87,17 @@ class Features(DataFrame):
                          freq_keys = [], 
                          rn_keys = [], 
                          bin_size = '10m',
+                         calc_keys = [],
                          log_convert = [],
-                         meta_keys = [],
                          **kwargs):
        
         if len(time_keys) == 0 and len(freq_keys) == 0 and len(rn_keys) == 0:
-            return        
-
-        stars = input_cat['STAR']        
-       
+            return  
+        
+        meta_keys = list(input_cat.columns)
+        stars = input_cat['STAR']  
+        
         column_names = np.concatenate((meta_keys,time_keys,freq_keys,rn_keys), axis=0)
-
         if bin_size == '10m':
             bin_size = 0.00694
         elif bin_size == '30m':
@@ -98,10 +119,8 @@ class Features(DataFrame):
                     r_values = np.full(len(rn_keys), np.nan)
                     meta_values = np.full(len(meta_keys), np.nan, dtype='object') 
                     
-                    if len(meta_keys) != 0:
-                        for k_index, k in enumerate(meta_keys):
-                            if k in input_cat.columns:
-                                meta_values[k_index] = input_cat[k][star_index]    
+                    for k_index, k in enumerate(meta_keys):
+                        meta_values[k_index] = input_cat[k][star_index]    
                         
                     hdu = get_hdu_from_keys(ff, SECTOR = s, HDUTYPE = 'LIGHTCURVE', BINSIZE = str(bin_size))[0] 
                     hdr = hdu.header
@@ -110,15 +129,15 @@ class Features(DataFrame):
                             if k in hdr:
                                 t_values[k_index] = hdr[k]
                                 
-                    hdu_f = get_hdu_from_keys(ff, SECTOR = s, HDUTYPE = 'FREQUENCIES', BINSIZE = str(bin_size))[0]
-                    hdr = hdu_f.header                                 
                     if len(freq_keys) != 0:
+                        hdu_f = get_hdu_from_keys(ff, SECTOR = s, HDUTYPE = 'FREQUENCIES', BINSIZE = str(bin_size))[0]
+                        hdr = hdu_f.header
                         for k_index, k in enumerate(freq_keys):
                             if k in hdr:
-                                f_values[k_index] = hdr[k]                                
-                    if len(rn_keys) != 0:
-                        rn_model = hdu_f.data[-1]
-                        for k_index, k in enumerate(rn_keys):                            
+                                f_values[k_index] = hdr[k]  
+                        if len(rn_keys) != 0:
+                            rn_model = hdu_f.data[-1]
+                            for k_index, k in enumerate(rn_keys):                            
                                 r_values[k_index] = rn_model[k]          
                                 
                     sect_values = np.concatenate((meta_values,t_values,f_values,r_values), axis=0)
@@ -130,10 +149,41 @@ class Features(DataFrame):
         for n, c in zip(column_names,t_array):
             self[n] = c
             
+        for c in calc_keys:
+            if c == 'MAD_RATIO':
+                self[c] = self['MAD_RAW'] / self['MAD']
+            if c == 'JH':
+                self[c] = self['Jmag'] - self['Hmag']
+            if c == 'HK':
+                self[c] = self['Hmag'] - self['Kmag']
+            if c == 'KW4':
+                self[c] = self['Kmag'] - self['W4mag']
+            if c == 'W14':
+                self[c] = self['W1mag'] - self['W4mag']              
+            if c == 'W24':
+                self[c] = self['W2mag'] - self['W4mag']
+            if c == 'W34':
+                self[c] = self['W3mag'] - self['W4mag']  
+            if c == 'Q_JHK':
+                self[c] = self['JH'] - 1.7 * self['HK']
+                    
         for c in log_convert :
             if c in self.columns:
-                self[c] = np.log10(self[c])
-        
+                if c in ['W0','R0']:
+                    self[c] = np.log10(1e+7 * self[c] + 1.)
+                else:
+                    self[c] = np.log10(self[c])
+                    
+        if 'R0' in self.columns:
+            nan_mask = self['R0'] < 0.8
+            try:
+                self['TAU'][nan_mask] = np.nan
+                self['GAMMA'][nan_mask] = np.nan
+            except:
+                pass
+            
+        #print(self[['STAR','SpC','Tmag']])                
+                
         if 'save_output' in kwargs:
             self.to_csv(kwargs['save_output'],index=False)    
       
@@ -145,6 +195,12 @@ class Features(DataFrame):
                   mode='median',
                   **kwargs):
         
+        if mode == 'none':
+            
+            return self.copy()
+        
+        df_copy = self.copy()
+        
         agg_cols ={}
         for c in cols:#:
             if mode == 'median':
@@ -152,7 +208,7 @@ class Features(DataFrame):
             elif mode == 'mean':
                 agg_cols[c] = np.nanmean
                 
-        agg_self = self.groupby(group_by,as_index=False).agg(agg_cols)
+        agg_self = df_copy.groupby(group_by,as_index=False).agg(agg_cols)
         
         if 'save_output' in kwargs:
             agg_self.to_csv(kwargs['save_output'],index=False)
@@ -164,15 +220,14 @@ class Features(DataFrame):
                   hue,
                   corner = True,
                   split_cand = True,
-                  outlier_sigma = 5,
+                  aggregate_type = 'none',
+                  outlier_sigma = 5.,
                   **kwargs):
         
-        self_l = self.copy()
-        
-        if split_cand:
-            self_l['SpC'] = [x.replace('?','') for x in self_l['SpC'] ]
-            mask = ['?' not in x for x in self_l['SpC']]
-            self_l = self_l[mask]
+        self_l = self._aggregate(plot_cols,
+                                 group_by = ['STAR','SpC'],
+                                 mode=aggregate_type)            
+
         
         if isinstance(outlier_sigma, (int,float)):            
             for c in plot_cols :
@@ -181,7 +236,7 @@ class Features(DataFrame):
                     Q3 = np.nanquantile(self_l[c], 0.75)
                     IQR = Q3 - Q1
                     nan_mask =  (self_l[c] < (Q1 - (outlier_sigma * IQR))) | (self_l[c] > (Q3 + (outlier_sigma * IQR)))
-                    self_l[c][nan_mask] = None  
+                    self_l[c][nan_mask] = np.nan  
         
         import seaborn as sns
         
@@ -193,39 +248,23 @@ class Features(DataFrame):
         
         return ax  
     
-    def umap_plot(self,
-                  var_cols,
-                  meta_cols = [],    
-                  aggregate = False,
-                  **kwargs):
+    def pair_plot_single(self,
+                         pair_cols,
+                         aggregate_type = 'median',
+                         **kwargs):
         
-        import umap
+        self_l = self._aggregate(pair_cols,
+                                 group_by = ['STAR','SpC'],
+                                 mode=aggregate_type)
         
-        if aggregate:
-            self_l = self._aggregate(cols = var_cols,
-                             group_by = ['STAR','SpC']) 
-        else:
-            self_l = self.copy()
-        
-        for c in var_cols:    
-            mask = np.isinf(self_l[c]) | np.isnan(self_l[c])
-            self_l = self_l[~mask]
-            
-        variables = self_l[var_cols]
-        scaled_variables = apply_scaler(variables,**kwargs)
-        pca_variables = apply_pca(scaled_variables,**kwargs)
-        
-        umap_reducer = umap.UMAP(n_components = 2, random_state=0, 
-                                 n_neighbors = kwargs.get('n_neighbors',12),
-                                 min_dist = kwargs.get('min_dist',0.1))
-        umap_variables = umap_reducer.fit_transform(pca_variables)
-        
+        variables = self_l[pair_cols]
+       
         fig, ax = plt.subplots(figsize=(8, 6))
         for s in set(self_l['STAR']):
             
-            umask = self_l['STAR'] == s
-            ustar = umap_variables[umask]
-            spt = self_l['SpC'][umask].iloc[0]
+            mask = self_l['STAR'] == s
+            star = variables[mask]
+            spt = self_l['SpC'][mask].iloc[0]
             
             if 'YHG' in spt:
                 c = 'g'
@@ -236,17 +275,208 @@ class Features(DataFrame):
             elif 'LBV' in spt:
                 c = 'orange'
                 m = '^'
+
                 
-            ax.plot(ustar[:,0],ustar[:,1],c='0.8')    
-            ax.plot(ustar[:,0],ustar[:,1], m, c = c, ms = 9)
-            ax.text(ustar[0,0]+0.03,ustar[0,1]+0.03, s, size=8)
+            ax.plot(star.iloc[:,0],star.iloc[:,1], m, c = c, ms = 9)
+            if not aggregate_type == 'none':
+                ax.text(star.iloc[:,0]+0.03,star.iloc[:,1]+0.03, s, size=8)
+            if '?' in spt:
+                ax.plot(star.iloc[:,0],star.iloc[:,1], m, c = 'w', ms = 4)
+                
+        ax.set_xlabel(pair_cols[0], fontsize=10)
+        ax.set_ylabel(pair_cols[1], fontsize=10)            
+        
+        return ax  
+    
+    def knn_classify(self,
+                   var_cols,
+                   class_col = 'SpC',
+                   split_cand = True,
+                   aggregate_type = 'none',
+                   n_perm = 0 ,                   
+                   **kwargs):
+        
+        self_l = self._aggregate(var_cols,
+                                 group_by = ['STAR','SpC'],
+                                 mode=aggregate_type)         
+        if split_cand:
+            self_l['SpC'] = [x.replace('?','') for x in self_l['SpC'] ]           
+                     
+        # for c in var_cols + cbar_col:    
+            #     mask = np.isnan(self_l[c])
+            #     self_l = self_l[~mask]       
+        x = transform_variables(self_l[var_cols],**kwargs)      
+        y = self_l[class_col].to_numpy()
+        
+        knn = KNeighborsClassifier(n_neighbors=3,weights="distance",metric="euclidean")
+        loo = LeaveOneOut()
+        y_pred = cross_val_predict(knn, x, y, cv=loo)
+        #for i,j in zip(y,y_pred): print(i,j)        
+        acc = accuracy_score(y, y_pred)
+        bal_acc = balanced_accuracy_score(y, y_pred)
+        
+        labels = np.unique(y)
+        cmt = confusion_matrix(y, y_pred, labels=labels)
+        cm_df = pd.DataFrame(cmt, 
+                             index=[f"true_{label}" for label in labels],
+                             columns=[f"pred_{label}" for label in labels])
+ 
+        print("Confusion matrix:",cm_df)
+        print("Report:",classification_report(y, y_pred, labels=labels))
+        print("Accuracy:", acc)
+        print("Balanced accuracy:", bal_acc)      
+    
+        # Permutation test
+        if n_perm > 0:
+            rng = np.random.default_rng(42)
+            bal_acc_perm = np.zeros(n_perm)
+            for i in range(n_perm):
+                y_perm = rng.permutation(y)
+                y_perm_pred = cross_val_predict(knn, x, y_perm, cv=loo)
+                bal_acc_perm[i] = balanced_accuracy_score(y_perm, y_perm_pred)
+            p_value = (np.sum(bal_acc_perm >= bal_acc) + 1) / (n_perm + 1)
+            
+            print("Permutation mean:", np.mean(bal_acc_perm))
+            print("Permutation std:", np.std(bal_acc_perm))
+            print("Permutation p-value:", p_value)
+
+        return
+    
+    def knn_regress(self,
+                    var_cols,
+                    regress_col = 'Tmag',
+                    split_cand = True,
+                    aggregate_type = 'none',
+                    n_perm = 0 ,                   
+                    **kwargs):
+        
+        self_l = self._aggregate(var_cols + [regress_col],
+                                 group_by = ['STAR','SpC'],
+                                 mode=aggregate_type)         
+        if split_cand:
+            self_l['SpC'] = [x.replace('?','') for x in self_l['SpC'] ] 
+            
+        x = transform_variables(self_l[var_cols],**kwargs)
+        y = self_l[regress_col].to_numpy()
+        
+        knn = KNeighborsRegressor(n_neighbors=3,weights="distance",metric="euclidean")
+        loo = LeaveOneOut()
+        y_pred = cross_val_predict(knn, x, y, cv=loo)
+        #for i,j in zip(y,y_pred): print(i,j)   
+        
+        r2 = r2_score(y, y_pred)
+        mae = mean_absolute_error(y, y_pred)
+        print("R2:", r2)
+        print("MAE:", mae)
+        
+        #Permutation test
+        if n_perm > 0:
+            rng = np.random.default_rng(42)
+            r2_perm = np.zeros(n_perm)
+            mae_perm = np.zeros(n_perm)
+            
+            for i in range(n_perm):
+                y_perm = rng.permutation(y)
+                y_perm_pred = cross_val_predict(knn, x, y_perm, cv=loo)
+                r2_perm[i] = r2_score(y_perm, y_perm_pred)
+                mae_perm[i] = mean_absolute_error(y_perm, y_perm_pred)
+                
+            p_r2 = (np.sum(r2_perm >= r2) + 1) / (n_perm + 1)
+            p_mae = (np.sum(mae_perm <= mae) + 1) / (n_perm + 1)
+            
+            print("Permutation R2 mean:", np.mean(r2_perm))
+            print("Permutation R2 std:", np.std(r2_perm))
+            print("Permutation p-value R2:", p_r2)
+            print("Permutation MAE mean:", np.mean(mae_perm))
+            print("Permutation MAE std:", np.std(mae_perm))
+            print("Permutation p-value MAE:", p_mae)
+        
+        return
+
+        
+        
+    
+    
+        
+        
+
+    
+    def umap_plot(self,
+                  var_cols,
+                  ax = None,
+                  cbar_col = [],    
+                  aggregate_type = 'none',
+                  **kwargs):
+        
+        import umap
+        
+        self_l = self._aggregate(var_cols + cbar_col,
+                                 group_by = ['STAR','SpC'],
+                                 mode=aggregate_type)
+        
+       # for c in var_cols + cbar_col:    
+       #     mask = np.isnan(self_l[c])
+       #     self_l = self_l[~mask]
+            
+        variables = self_l[var_cols]
+        
+        variables= variables.rename(str,axis="columns") 
+        scaled_variables = apply_scaler(variables,**kwargs)
+        pca_variables = apply_pca(scaled_variables,**kwargs)
+        
+        umap_reducer = umap.UMAP(n_components = 2, random_state=0, 
+                                 n_neighbors = kwargs.get('n_neighbors',12),
+                                 min_dist = kwargs.get('min_dist',0.1))
+        umap_variables = umap_reducer.fit_transform(pca_variables)
+        
+        if ax is None:
+         _, ax = plt.subplots(figsize=(8, 6))
+         
+        if len(cbar_col) == 1:            
+            cbc = self_l[cbar_col]
+            mn = min(cbc.values); mx = max(cbc.values)
+            if cbar_col[0] == 'Q_JHK': mn = -1.3
+            if cbar_col[0] == 'CROWDSAP': mn = 0.85
+            cmap, cnorm = colorbar(mn,mx,cbar='rainbow')
+        
+        for s in set(self_l['STAR']):
+            
+            umask = self_l['STAR'] == s
+            ustar = umap_variables[umask]
+            spt = self_l['SpC'][umask].iloc[0]
+            
+            if 'YHG' in spt:
+                c = 'r'
+                m = 'o'
+            elif 'B[e]SG' in spt :
+                c = 'b' 
+                m = 's'
+            elif 'LBV' in spt:
+                c = 'green'
+                m = '^'
+                
+            ax.plot(ustar[:,0],ustar[:,1],'k',lw=0.1) 
+            if len(cbar_col) == 1:
+                c = cmap(cnorm(cbc[umask].iloc[0]))
+                
+            ax.plot(ustar[:,0],ustar[:,1], m, c = c, ms = 10)
+            ax.text(ustar[0,0]-0.05,ustar[0,1]-0.18, s, size=6)
             if '?' in spt:
                 ax.plot(ustar[:,0],ustar[:,1], m, c = 'w', ms = 4)
                 
         ax.set_xlabel('UMAP 1', fontsize=10)
-        ax.set_ylabel('UMAP 2', fontsize=10)            
+        ax.set_ylabel('UMAP 2', fontsize=10)
+        if len(cbar_col) == 1:
+            extend = 'neither'
+            if cbar_col[0] == 'Q_JHK' or cbar_col[0] == 'CROWDSAP': extend = 'min'
+            plt.colorbar(cm.ScalarMappable(norm=cnorm, cmap=cmap), ax=ax,
+                         orientation = 'horizontal',
+                         extend = extend)          
         
         return ax
+    
+        
+        
     
     '''
     

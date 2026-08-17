@@ -67,8 +67,8 @@ class PreProcess(object):
                         
         @update_table
         def read_xtab(self,cat):
-                        return ascii.read(cat)
-        @update_table
+                        return ascii.read(cat, header_start=0, delimiter=',')
+                    
         def read_vtab(self,cat): 
                         return read_viztab(cat)
                        

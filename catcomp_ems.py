@@ -26,9 +26,13 @@ LOC = [('MW' in x) for x in cm['GAL']]
 #LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
 cm = cm[LOC]
 
-r = np.where(cm['STAR']=='RHO CAS')[0][0]
-cm = cm[r:r+1]
-#cm = cm[:1]
+#r = np.where(cm['STAR']=='HD62623')[0][0]; cm = cm[r:r+1]
+#cstars = ['HD96918','HR5171','HR8752','6 CAS','RHO CAS']
+#cstars = ['HD62623','P Cyg']
+#cstars = [
+#    'MWC137','HD80077','GG Car','HR5171','WRAY 16-137','[GKF2010] MN48','[B61] 2',
+#    'P Cyg','V439 Cyg','MWC349','6 CAS']
+#r= [np.where(cm['STAR']==x)[0][0] for x in cstars]; cm = cm[r]
 
 ################ QUERYING FROM MAST
 # LIGHTUCRVES
@@ -45,9 +49,9 @@ cm = cm[r:r+1]
 ############# EXTRACTION 
 # TIME DOMAIN
 
-LCs = Extract(data=cm, 
+'''LCs = Extract(data=cm, 
               plot_key='flux',
-              plot_name='x3_ems', 
+              plot_name='x_ems', 
               rows_page = 4, cols_page = 1,
               output_format='png')
 LCs.lightcurves(time_bin = [0.00694],
@@ -56,211 +60,120 @@ LCs.lightcurves(time_bin = [0.00694],
                 save_fits = True, extract_field = False)
 #'''
 # FREQUENCY DOMAIN
-#PGs = Extract(data=cm, 
-#              plot_name='xf_ems', 
-#              fig_xlabel = '', fig_ylabel = '', 
-#              figsize = (12,22),
-#              output_format='png')
-#PGs.periodograms(bin_size = '10m',
-#                 term_sn=3.9,
-#                 maximum_frequency=40)
-
+'''PGs = Extract(data=cm, 
+              plot_name='xf_ems', 
+              fig_xlabel = '', fig_ylabel = '', 
+              rows_page = 4, cols_page = 2,
+              figsize = (12,22),
+              output_format='png')
+PGs.periodograms(snr_file = 'ls_snr',
+                 maximum_frequency=40)
+#'''
 ############# VISUALIZATION
 # LIGHTCURVES
-#'''
+'''
 LC = Visualize(data=cm,
-                plot_name='v12_ems', 
-                plot_key='nflux', 
+                plot_name='vn_ems', 
+                plot_key='dmag', 
+                figsize = (32,20),
                 rows_page=6, 
-                cols_page=5, 
-                output_format='png')
-LC.lightcurves(stitched=False, 
-                bin_size = '10m', 
-                models=False, 
-                med_norm = False,
-                trend = True)
-#'''
-# MODEL FITS
-#LS = 
-
+                cols_page=6, 
+                output_format='png').lightcurves(models=True, trend = True)
+'''
 # PERIODOGRAMS
-
+'''
+LS = Visualize(data=cm,
+                plot_name='ls_ems', 
+                plot_key='ls',
+                figsize = (32,20),
+                rows_page=6, 
+                cols_page=6, 
+                output_format='png').periodograms()
+'''
 
 ############# METRICS
-time_metrics = ['SKW','PSI','STD','IQR','ETA','MAD','ZCR','MSE']
-frequency_metrics = ['TOP','HPR','WFM','WFD','SEN']
+time_metrics = ['EMSE1','EMSE0','MAD','MAD_RAW','ETA']
+freq_metrics = ['WFM','WFD']
 rn_metrics = ['W0','R0','TAU','GAMMA']
+
 # RESETING - REMOVING
-#fl = FitsList(cm)
-#fl.add_header_keys(key_dict={'HDUTYPE':'LIGHTCURVE'})
-#fl.remove_header_keys(keys = frequency_metrics)
-#fl.remove_hdu(hdutypes=['FREQUENCIES','PERIODOGRAMS'])
+#fl = FitsList(cm); fl.add_header_keys(key_dict={'HDUTYPE':'LIGHTCURVE'})
+#fl = FitsList(cm); fl.remove_hdu(hdutypes=['FREQUENCIES','PERIODOGRAMS'])
 
 # TIME DOMAIN
-#td = TimeDomain(data = cm, measures = time_metrics).calculate(bin_size = '10m')
+#td = TimeDomain(data = cm, measures = time_metrics).calculate()
 # FREQUENCY DOMAIN
-#fd = FrequencyDomain(data = cm, measures = frequency_metrics).calculate(bin_size = '10m', min_freq = 2/27.)
+#fl = FitsList(cm); fl.remove_header_keys(keys = freq_metrics)
+#fd = FrequencyDomain(data = cm, measures = freq_metrics).calculate(min_freq = 0.1)
 
+  
 
-'''
-meta_keys = ['STAR','TIC','TEFF','LOGL','JK','MJ','MG','SpC']
-if 'MSE' in time_metrics:
-    m_ind = time_metrics.index('MSE')
-    time_metrics[m_ind:m_ind+1] = ['MSE0','MSE1','MSE2']
 
 feats = Features()
-feats.get_from_sectors(
+ftab = feats.get_from_sectors(
     input_cat = cm,
-    time_keys = time_metrics + ['SECTOR','BINSIZE'], 
-    freq_keys = frequency_metrics,
+    time_keys = time_metrics + ['SECTOR','CROWDSAP'], 
+    freq_keys = freq_metrics,
     rn_keys = rn_metrics,
-    meta_keys = meta_keys,
-    log_convert = ['IQR','PSI','R0'],
-    save_output = 'features_ems_2.csv')
-    
-#feats._aggregate(cols = rn_metrics+time_metrics+frequency_metrics,
+    calc_keys = ['JH','HK','KW4','W14','W24','W34','Q_JHK'],
+    log_convert = ['IQR','PSI','ETA','MAD','MAD_RAW','TOP','W0','R0','MSE0','EMSE0'],
+    save_output = None)
+
+
+#print(ftab[['STAR','SECTOR'] + freq_metrics])
+ 
+#ftab_agg = feats._aggregate(cols = rn_metrics, mode='median',
 #                     group_by = ['STAR','SpC','TIC'],
-#                     save_output = 'features_aggr.csv') 
+#                     save_output = None) 
+#print(ftab_agg[['STAR'] + rn_metrics])
+
+#print(ftab)
+
+#feats.pair_plot(plot_cols = time_metrics, hue = 'SpC',aggregate_type='none',outlier_sigma=5)
+#feats.pair_plot(plot_cols = freq_metrics, hue = 'SpC',aggregate_type='none')
+#feats.pair_plot(plot_cols = rn_metrics, hue = 'SpC',aggregate_type='none',outlier_sigma=10.)
+#feats.pair_plot(plot_cols = time_metrics+freq_metrics+rn_metrics, hue = 'SpC',aggregate_type='none',outlier_sigma=10.)
+
+#feats.pair_plot_single(pair_cols=['Q_JHK','HK'])
+
+#feats.pair_plot(plot_cols = time_metrics + frequency_metrics + rn_metrics,
+#                hue = 'SpC',aggregate_type='none')
 
 
-#feats.pair_plot(plot_cols = ['IQR','PSI','SKW','MSE0','MSE1'],
-#                hue = 'SpC')
-#feats.pair_plot(plot_cols = ['WFM','WFD','R0','GAMMA','TAU'],
-#                hue = 'SpC')
+pca = 7
+min_dist = 0.09
+feats.knn_classify(var_cols = time_metrics+rn_metrics+freq_metrics,
+                 aggregate_type='median', scaler_type = 'standard',
+                 pca_components=pca,n_perm=0)
 
-feats.umap_plot(var_cols= ['IQR','PSI',
-                            'R0','TAU','GAMMA',
-                            'WFM','WFD',
-                            'MSE0','MSE1','MSE2'
-                            ],
-                aggregate = True,
-                n_neighbors=12, min_dist=0.1,
-                scaler_type = 'standard',               
-                pca_components = 5,
-                )
+feats.knn_regress(var_cols = time_metrics+rn_metrics+freq_metrics,
+                  regress_col='Tmag', aggregate_type='median', 
+                  scaler_type = 'standard', pca_components=pca,n_perm=1000)
 
-#pd.set_option('display.max_rows', 500)
+
 #print(feats)
-
-
-
-#TO DO : CONVERT MASKED INPUT DATA TO NANS NOT ZEROS
-
-f.get_from_primary_headers(time_metrics + ['MINCROWD','AVECROWD'], update_table = True)
-ptab = cm['STAR','MK','RA','DEC','TIC','AVECROWD',
-               'JK','BR','RUWE',
-               'TEFF','e_TEFF','SLOGL',
-               'IQR','e_IQR','PSI','e_PSI','SKW','e_SKW','ZCR','e_ZCR',
-               'MSP','e_MSP','MSD','e_MSD','MSC','e_MSC','MSS','e_MSS','GAL','SpC']
-print(ptab)
-#print(ptab.pprint(max_lines=-1,max_width=-1))
-
-
-
-
-#print(feats.pprint(max_lines=-1,max_width=-1))
-#print_tab = cm['STAR','RA','DEC','GAL','SpC','TIC','AVECROWD',
-#               'MK','JK','BR','RUWE',
- #              'TEFF','e_TEFF','SLOGL',
-  #             'IQR','e_IQR','PSI','e_PSI','SKW','e_SKW','ZCR','e_ZCR',
-   #            'MSP','e_MSP','MSD','e_MSD','MSC','e_MSC','MSS','e_MSS']
-#print(print_tab)
-#print(ptab.pprint(max_lines=-1,max_width=-1))
-#tab_to_csv(print_tab,filename='ftab_10m.csv')
-
-
-plot_kwargs = {'invert': ['MK'], 'cbar': ['AVECROWD', 0.79, 1], 'alpha': ['AVECROWD', 0.75, 0.85, 0.95],
-               'output_format': None, 'inter': True}
-
-f.scatter_plot(x = ['MSC','MSP'], 
-               y = ['PSI','e_PSI','MSS','MSD'], 
-               **plot_kwargs)
-
-#f.scatter_plot(x = ['JK','logRUWE'], 
-#               y = ['PSI','e_PSI','MSS','MSD'], 
-#               **plot_kwargs)
-
-#f.scatter_plot(x = ['JK','logRUWE'], 
-#               y = ['MSC','MSP','MSS','MSD'], 
-#               **plot_kwargs)
-
-
-f.scatter_plot(x = ['MK', 'TEFF','SLOGL'], 
-               y = ['logIQR','ZCR','PSI','SKW'],#,'MSC','MSD','MSP'],
-               **plot_kwargs)
-
 '''
-#print(cm[('STAR','TEFF',) + metrics].pprint(max_lines=-1,max_width=-1))
-#print(cm.columns)
 
+fig, ax = plt.subplots(1,2); ax= ax.flatten()
+feats.umap_plot(ax=ax[0], var_cols = time_metrics+rn_metrics+freq_metrics,
+                aggregate_type = 'median', scaler_type = 'standard',
+                n_neighbors=6, min_dist=min_dist, pca_components=pca)
+feats.umap_plot(ax=ax[1], var_cols = time_metrics+rn_metrics+freq_metrics,
+                aggregate_type = 'median', scaler_type = 'standard',
+                n_neighbors=20, min_dist=min_dist, pca_components=pca)
 
-
-#LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]
-#cLBV = [('LBV?' in x) for x in cm['SpC']]
-#BRC = [('B[e]SG' in x) & ('?' not in x) for x in cm['SpC']]
-#cBRC = [('B[e]SG?' in x) for x in cm['SpC']]
-#plt.plot(cm['RA'],cm['DEC'],**plot_all)
-#plt.plot(cm['RA'][LBV],cm['DEC'][LBV],**plot_LBV)
-#plt.plot(cm['RA'][cLBV],cm['DEC'][cLBV],**plot_cLBV)
-#plt.plot(cm['RA'][BRC],cm['DEC'][BRC],**plot_BRC)
-#plt.plot(cm['RA'][cBRC],cm['DEC'][cBRC],**plot_cBRC)
-#for g, p in GALAXIES.items(): 
-# c = plt.Circle((p['RA'], p['DEC']), p['RAD'], color='r', fill=False)
-# plt.gca().add_patch(c)
-# plt.text(p['RA'], p['DEC'], g, c='r', fontsize=8)
-
-#print(cm['STAR','SpC','RA','DEC','Gmag','GDIST','MG','SLOGL','REF'].pprint(max_lines=-1))
-#plt.plot(cm['TEFF'],cm['SLOGL'],'rx'); plt.xlabel(r'T$_{eff}$'); plt.ylabel(r'log(T$_{eff}^4$/g [$L_{\odot}$])'); plt.xlabel(r'T$_{eff}$ [K]'); plt.gca().invert_xaxis() ; plt.show()
-
-#print(cm['STAR','SpC','RA','DEC','REF','DIST','GDIST','MK','TIC'].pprint(max_lines=-1))
-
-#LBV = [('LBV' in x) & ('?' not in x) for x in cm['SpC']]
-#cLBV = [('LBV?' in x) for x in cm['SpC']]
-#BRC = [('B[e]SG' in x) & ('?' not in x) for x in cm['SpC']]
-#cBRC = [('B[e]SG?' in x) for x in cm['SpC']]
-#DR24 = ['D24' in x for x in cm['REF']]
-
-#plt.plot(cm['BR'],cm['MG'],**plot_all); plt.xlabel(r'G$_{B}$-G$_{R}$'); plt.ylabel(r'M$_{G}$')  
-#plt.plot(cm['BR'][DR24],cm['MG'][DR24],'rx'); 
-#plt.plot(cm['BR'][LBV],cm['MG'][LBV],**plot_LBV) 
-#plt.plot(cm['BR'][cLBV],cm['MG'][cLBV],**plot_cLBV) 
-#plt.plot(cm['BR'][BRC],cm['MG'][BRC],**plot_BRC) 
-#plt.plot(cm['BR'][cBRC],cm['MG'][cBRC],**plot_cBRC)
-#plt.gca().invert_yaxis() 
-#plt.show()
-
-#plt.plot(cm['JK'],cm['MK'],**plot_all); plt.xlabel(r'J-K'); plt.ylabel(r'M$_{K}$')  
-#plt.plot(cm['JK'][DR24],cm['MK'][DR24],'rx')
-#plt.plot(cm['JK'][LBV],cm['MK'][LBV],**plot_LBV)
-#plt.plot(cm['JK'][cLBV],cm['MK'][cLBV],**plot_cLBV) 
-#plt.plot(cm['JK'][BRC],cm['MK'][BRC],**plot_BRC)
-#plt.plot(cm['JK'][cBRC],cm['MK'][cBRC],**plot_cBRC)
-#plt.gca().invert_yaxis() 
-#plt.show()
-
-#gal = SkyCoord(ra=np.array(cm['RA'])*u.degree, dec=np.array(cm['DEC'])*u.degree, frame='icrs').galactic
-#plt.plot(cm['RUWE'],gal.b,'o')
-#plt.plot(cm['RUWE'],cm['GLAT'],'rx'); plt.xlabel(r'RUWE'); plt.ylabel(r'GLAT'); plt.axvline(1.4)   
-#plt.show()
-
-#plt.plot(cm['TEFF'],cm['SLOGL'],'rx'); plt.xlabel(r'T$_{eff}$'); plt.ylabel(r'log(T$_{eff}^4$/g [$L_{\odot}$])'); plt.xlabel(r'T$_{eff}$ [K]')  
-#plt.plot(np.log10(cm['TEFF']),cm['LOGG'],'rx'); plt.xlabel(r'T$_{eff}$'); plt.ylabel(r'log($g$)'); plt.xlabel(r'log(T$_{eff}$ [K])')
-
-#for tr in _tracks:
- #m_ini = tr.split('p')[0][1:]
- #time, logl, logt, logg, GR_V, GB_V, G_V, V_K, J_K, MV = np.loadtxt(EVOL_TRACKS_PATH + tr, skiprows=2, usecols = (1,3,4,-16, -3,-4,-5,-6, -8, -13), unpack = True)
- 
-# if 86 > int(m_ini) > 6 : 
-#  sll = slogl(10**logt,logg)[1:180]
- # t = 10**logt[1:180]
-  #plt.plot(t,sll,'k'); plt.text(t[0],sll[0]-0.04,str(m_ini))
-  #plt.plot(logt[0:180],logg[0:180],'k'); plt.text(logt[0],logg[0]-0.02,str(m_ini))
- 
- #GB_GR = GB_V - GR_V
- #MK = MV - V_K
- #MG = G_V + MV
- #if 86 > int(m_ini) > 6 : 
- # plt.plot(J_K[1:230],MK[1:230],'k'); plt.text(J_K[0],MK[0]-0.1,str(m_ini)) 
- # plt.plot(GB_GR[1:250],MG[1:250],'k'); plt.text(GB_GR[0],MG[0]-0.1,str(m_ini))
-#plt.gca().invert_yaxis() 
-#plt.show()
+fig, ax = plt.subplots(1,3); ax= ax.flatten()
+feats.umap_plot(ax=ax[0], var_cols = time_metrics+rn_metrics+freq_metrics,
+                cbar_col = ['Tmag'], 
+                aggregate_type = 'median', scaler_type = 'standard',
+                n_neighbors=20, min_dist=min_dist, pca_components=pca)
+feats.umap_plot(ax=ax[1], var_cols = time_metrics+rn_metrics+freq_metrics,
+                cbar_col = ['CROWDSAP'], 
+                aggregate_type = 'median', scaler_type = 'standard',
+                n_neighbors=20, min_dist=min_dist, pca_components=pca)
+feats.umap_plot(ax=ax[2], var_cols = time_metrics+rn_metrics+freq_metrics,
+                cbar_col = ['Q_JHK'], 
+                aggregate_type = 'median', scaler_type = 'standard',
+                n_neighbors=20, min_dist=min_dist, pca_components=pca)
+plt.tight_layout(wspace=0,hspace=0)
+'''

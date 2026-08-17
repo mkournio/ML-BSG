@@ -31,7 +31,7 @@ class TimeDomain(object):
         pass
     
     def calculate(self, 
-                  bin_size, 
+                  bin_size = '10m', 
                   stitched = False, 
                   **kwargs):
  
@@ -67,7 +67,12 @@ class TimeDomain(object):
                             mse = self.lc_mse(hdu)
                             for im, vm in enumerate(mse):
                                 hdu.header[f'MSE{im}'] = vm
-                        else:
+                        if m == 'EMSE':
+                            hdu_mod = get_hdu_from_keys(ff[1:], SECTOR = hdu.header['SECTOR'], HDUTYPE = 'FREQUENCIES', BINSIZE = str(bin_size_d))[0]
+                            emse = self.lc_mse(hdu, f_mod = hdu_mod)
+                            for im, vm in enumerate(emse):
+                                hdu.header[f'EMSE{im}'] = vm
+                        if m not in ['MSE','EMSE']:
                             if np.isnan(v):
                                 v = None
                             hdu.header[m] = v
@@ -150,7 +155,9 @@ class TimeDomain(object):
     def td_lc(f, measures, flux_key = 'dmag'):
         
         lc = get_lc_from_filename(f, flux_key = flux_key)
-        lc = lc.remove_outliers(sigma=3.)
+        lc = lc.remove_outliers(sigma=5.)
+        if 'MAD_RAW' in measures:
+            lc0 = get_lc_from_filename(f, flux_key = 'flux').remove_outliers(sigma=5.)
         
         mval = np.full(len(measures), np.nan)
         
@@ -160,6 +167,9 @@ class TimeDomain(object):
                 mval[i] = get_std(lc.flux)
             elif m == 'MAD':
                 mval[i] = get_mad(lc.flux)
+            elif m == 'MAD_RAW':
+                dmag_raw = -2.5 * np.log10(lc0.flux / np.median(lc0.flux)) 
+                mval[i] = get_mad(dmag_raw)
             elif m == 'IQR':
                 mval[i] = get_iqr(lc.flux)
             elif m == 'SKW':
@@ -176,14 +186,21 @@ class TimeDomain(object):
         return mval
     
     @staticmethod    
-    def lc_mse(f, flux_key = 'dmag'):
+    def lc_mse(f, f_mod = None, flux_key = 'dmag'):
         
         lc = get_lc_from_filename(f, flux_key = flux_key)
-        lc = lc.remove_outliers(sigma=3.)
-        mse = get_mse(lc.flux)
+        # lc = lc.remove_outliers(sigma=3.)
         
-        return mse
+        if f_mod == None:
+            
+            return get_mse(lc.flux, time=lc.time)
         
+        else:
+            
+            model = fourier_series(lc.time.value, params = f_mod)            
+            lc.flux = lc.flux - model.flux
+            
+            return get_mse(lc.flux, time=lc.time)
     
 class FrequencyDomain(object):
     
@@ -203,7 +220,7 @@ class FrequencyDomain(object):
         pass
     
     def calculate(self, 
-                  bin_size, 
+                  bin_size = '10m', 
                   min_freq = 2/27.,
                   stitched = False, 
                   **kwargs):
@@ -263,17 +280,18 @@ class FrequencyDomain(object):
         return
     
     @staticmethod
-    def fd_lc(f, measures, min_freq = 2/27., flux_key = 'dmag'):
+    def fd_lc(f, measures, min_freq = 0.1):
         
         if isinstance(f, fits.BinTableHDU):
+            if f.header['HDUTYPE'] != 'FREQUENCIES':
+                print('HDU must be of type FREQUENCIES')
+                return
             data = f.data.copy()
         else:
             return
         
         data = data[data['frequency'] >= min_freq]
-
         mval = np.full(len(measures), np.nan)
-
         for i, m in enumerate(measures):
             
             if m == 'TOP':

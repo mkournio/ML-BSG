@@ -74,7 +74,10 @@ def get_minmax_flux(hdulist, flux_key):
 
     return min(mins), max(maxs) 
 
-def get_fits_name(star,tic):
+def get_fits_name(star,tic,**kwargs):
+    
+    if 'output_path' in kwargs:
+        path_to_output_fits = kwargs['output_path']
     
     return os.path.join(path_to_output_fits,'{}_{}.fits'.format(star,tic))
 

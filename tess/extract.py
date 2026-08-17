@@ -369,13 +369,21 @@ class Extract(GridTemplate):
      if kwargs.get('save_lcs') :         
          if not os.path.exists(path_to_lcs): 
             os.makedirs(path_to_lcs)
+            
+     if 'spoc_path' in kwargs:
+         path_to_spoc_files = kwargs['spoc_path']
+     if 'tess_spoc_path' in kwargs:
+         path_to_tess_spoc_files = kwargs['tess_spoc_path']
  
      fSPOC = os.listdir(path_to_spoc_files)
      fTSPOC = os.listdir(path_to_tess_spoc_files)
                  
      stars = self.data['STAR']
      tics = self.data['TIC']
-     spcs = self.data['SpC']
+     try:
+         spcs = self.data['SpC']
+     except:
+         spcs = [''] * len(stars)
      ras = self.data['RA']
      decs = self.data['DEC']
      for star, spc, tic, ra, dec in zip(stars,spcs,tics,ras,decs):
@@ -393,8 +401,8 @@ class Extract(GridTemplate):
        #  print(star,tic,tspoc_files,sec_tspoc)
          
          if ((len(spoc_files) > 0) or (len(tspoc_files) > 0)) and kwargs.get('save_fits'):         
-                 fits_path = get_fits_name(star,tic)                 
-                 if not os.path. exists(fits_path):
+                 fits_path = get_fits_name(star,tic,**kwargs)                 
+                 if not os.path.exists(fits_path):
                     self.ff = FitsObject(fits_path)
                     print(f'Fits file for {star} - TIC{tic} created.')
                  else:
@@ -434,7 +442,9 @@ class Extract(GridTemplate):
                              kwargs['break_tolerance'] = float(r[5])
                              kwargs['sigma'] = float(r[6])
                              kwargs['break_mid'] = float(r[7])    
-                             kwargs['w_flat'] = float(r[8])
+                             kwargs['w_flat'] = -1
+
+                             #kwargs['w_flat'] = float(r[8])
                              
              ax_lc = self._extract_lc(path_to_input_file, time_bin, **kwargs)
              if ax_lc != None:
@@ -609,7 +619,8 @@ class Extract(GridTemplate):
         return
     
     def periodograms(self,
-                     bin_size,
+                     bin_size = '10m',
+                     snr_file = None,
                      stitched = False,
                      **kwargs):
         
@@ -628,7 +639,7 @@ class Extract(GridTemplate):
             
             if len(fits_files) > 0:
                 
-                ff = fits.open(get_fits_name(star,tic))
+                ff = fits.open(get_fits_name(star,tic),**kwargs)
                 print('Extracting LS data for {} - {}'.format(star,tic))
               
                 if stitched:                    
@@ -643,9 +654,19 @@ class Extract(GridTemplate):
                       ax_lc = self.GridAx()
                       ax_ls = self.GridAx()                      
                       hdr = hdu.header
+                      
+                      term_sn = 3.9
+                      if snr_file != None:
+                          with open(snr_file) as sf:
+                              for sr in sf:
+                                  r = sr.split()
+                                  if int(r[0]) == tic and int(r[1]) == hdr['SECTOR']:
+                                      term_sn = float(r[2])                          
+                          
                       param, pg_tab, meta = self.lombscargle(hdu, 
                                                          ax_lc = ax_lc,
                                                          ax_ls = ax_ls,
+                                                         term_sn = term_sn,
                                                         # save_output = True,   
                                                         # show_plot=True,
                                                          ref_file = f'{star}_s{hdr["SECTOR"]}_{bin_size}',
@@ -910,12 +931,12 @@ class Extract(GridTemplate):
             opt_step = 1,
             opt_range = 0.1,
             minimum_frequency = None,
-            maximum_frequency = None,
+            maximum_frequency = 40.,
             red_noise = True,
             show_plot = False,
             save_output = False,
             **kwargs):
-
+        
         if nprew < 1:
             raise Exception('Define at least one step for frequency extraction (nprew). Aborting..')
         
@@ -1033,7 +1054,7 @@ class Extract(GridTemplate):
             gs = GridSpec(1, 3, figure=fig)            
             ax_lc = fig.add_subplot(gs[0, :2])
             ax_ls = fig.add_subplot(gs[0, 2])            
-            fig.suptitle(f)
+            #fig.suptitle(f)
         else:
             if 'ax_lc' in kwargs: ax_lc = kwargs['ax_lc']
             if 'ax_ls' in kwargs: ax_ls = kwargs['ax_ls']            
@@ -1046,7 +1067,7 @@ class Extract(GridTemplate):
             ax_lc.plot(lc.time.value,fourier.flux.value,'c.',label=f'GLS model')
             #ax_lc.plot(model.time.value,model.flux.value,'r',label='Lightkurve model')
             
-            ax_lc.set_xlabel(PLOT_XLABEL['lc'])
+            ax_lc.set_xlabel(PLOT_XLABEL['flux'])
             ax_lc.set_ylabel(PLOT_YLABEL['dmag'])            
             ax_lc.invert_yaxis() 
             ax_lc.legend(fontsize=12)           
@@ -1059,19 +1080,20 @@ class Extract(GridTemplate):
                 x=pg_tab[0]                
                 ax_ls.plot(x,pg_tab[i],color = color[i-1])
                 
+            maxy = 2. * max(pg_tab[1]); miny = 2e-1 * np.nanmedian(pg_tab[-1])     
             if red_noise: 
                 for i, ls in zip([params['nmod'].value],['-']):
                     rn_prop = [params[f'W0_{i}'],
                                params[f'R0_{i}'],
                                params[f'TAU_{i}'],
-                               params[f'GAMMA_{i}']]                               
+                               params[f'GAMMA_{i}']]  
                     ax_ls.plot(x,lorentz(x,*rn_prop),'r',ls=ls)
 
             ax_ls.set_xscale('log')
             ax_ls.set_yscale('log')
 
-            ax_ls.set_xlim([0.05,x[-1]])                
-            ax_ls.set_ylim([5e-6,None])
+            ax_ls.set_xlim([0.07,x[-1]])                
+            ax_ls.set_ylim([miny,maxy])
             ax_ls.set_xlabel(PLOT_XLABEL['ls'])
             ax_ls.set_ylabel(r'Amplitude [mag]')
             
@@ -1112,7 +1134,7 @@ class Extract(GridTemplate):
     def rednoise(x,
                  y,
                  fit_scale = 'log',
-                 low_lim = 2/27., 
+                 low_lim = 0.08, 
                  up_lim = 30.,
                  npar = 0.,
                  nt = 2000,
@@ -1128,24 +1150,29 @@ class Extract(GridTemplate):
         if fit_scale == 'log':
             y = np.log10(y)
             fit_func = lambda x,w,z,t,g: np.log10(lorentz(x,w,z,t,g))
-
-       
+            
         mask = (np.array(x) > low_lim) & (np.array(x) < up_lim)
+        mask = mask & (abs(y - np.mean(y)) < 7.*np.std(y))
         try:
             popt, pconv = curve_fit(fit_func,x[mask],y[mask], p0=[3e-5, 1e-3, 0.1, 3], method= 'lm', maxfev=300)#,bounds=bounds)
-            perr = np.sqrt(np.diag(pconv))
-                
-            mse = sum((y - np.log10(lorentz(x,*popt)))**2)/(len(y)*(0.434**2))  
-            bic = len(y)*np.log(mse) + df * np.log(nt)           
+            perr = np.sqrt(np.diag(pconv))          
+            bic = np.nan
+    
+         #   mse = sum((y - np.log10(lorentz(x,*popt)))**2)/(len(y)*(0.434**2))  
+        #    bic = len(y)*np.log(mse) + df * np.log(nt)           
             
         except RuntimeError:
+            popt = 0. * np.empty(4)
+            perr = 0. * np.empty(4)      
+            fit_func_white = lambda x,w : np.log10(lorentz(x,w,0.,0.,0.))
             try:
-                popt, pconv = curve_fit(fit_func,x[mask],y[mask], p0=[1e-5,0.,np.inf,np.inf], method= 'lm', maxfev=400)
-                perr = np.sqrt(np.diag(pconv))
+                popt_w, pconv_w = curve_fit(fit_func_white,x[mask],y[mask], p0=[1e-5], method= 'lm', maxfev=400)
+                popt[0] = popt_w
+                perr_w = np.sqrt(np.diag(pconv_w))
+                perr[0] = perr_w
             except RuntimeError:
                 print('Red noise - solution could not be fount. Setting params to nan.')
-                popt = np.nan * np.empty(4)
-                perr = np.nan * np.empty(4)
+             
                 pass
             
             bic = np.nan

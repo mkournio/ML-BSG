@@ -399,6 +399,7 @@ def normalize_break(lc, deg = 2, break_tolerance = 1., sigma = 3, break_mid = Fa
     if 'w_flat' in kwargs and kwargs['w_flat'] > 0:
         bin_size = np.nanmedian(lc.time[1:] - lc.time[0:-1]).value
         window_length = int(kwargs['w_flat'] / bin_size)
+        break_tolerance = int(kwargs['break_tolerance'] / bin_size)
         norm_lc, trend = lc.flatten(window_length = window_length, return_trend = True, break_tolerance = break_tolerance)
         trend = trend.flux
     else:
@@ -475,7 +476,7 @@ def get_eta(flux):
 
 	succd = np.sum(np.diff(flux)**2) / (len(flux) - 1) 
 
-	return succd / np.var(flux)
+	return 1 / (succd / np.var(flux,ddof=1))
 
 def get_iqr(flux):
     
@@ -487,33 +488,61 @@ def get_kurt(flux):
     
     return stats.kurtosis(flux)
 
-def get_mse(flux, m = 2, tau = 12, tol = 0.2):
+def get_mse(flux, time = [], m = 2, tau = 12, tol = 0.3, break_d = 0.1, ax = None):
     
     flux = np.array(flux)
     
-    if len(flux) > 40000:
+    if len(time) > 0:
+        mask = np.isfinite(flux)
+        time = time[mask]
+        flux = flux[mask]
         
-        return  np.full(4, np.nan)    
+        dt = time[1:] - time[0:-1]
+        cut = np.where(dt > break_d)[0] + 1
+        low = np.append([0], cut)
+        high = np.append(cut, len(time))
+    else:
+        low = [0]
+        high = [len(flux)]
 
-    Mobj = EH.MSobject('SampEn', m = m, Logx = np.exp(1), 
-                       r = tol * np.nanstd(flux), Vcp = False)
-    mse = EH.MSEn(flux, Mobj, Scales = tau, Methodx = 'coarse', 
-                  RadNew = 0, Plotx = False)    
+    seg_stat = []
+    for l, h in zip(low, high):
+
+        flux_seg = flux[l:h]
+       
+        tau = int(len(flux_seg)/120.)
+        if tau < 5:
+            continue
         
-    msx = np.arange(1,tau+1,1)
-    msy = mse[0]    
-    
-    idx = np.isfinite(msx) & np.isfinite(msy)
-    msx = msx[idx]
-    msy = msy[idx]
-    
-    z2 = np.polyfit(msx,msy,deg=2)
-    f2 = np.poly1d(z2)
-    
-    #plt.plot(msx,msy,'o')
-    #plt.plot(msx,f2(msx))
+       # if len(flux_seg) > 40000:            
+       #     return  np.full(4, np.nan)
+        
+        Mobj = EH.MSobject('SampEn', m = m, Logx = np.exp(1), 
+                       r = tol * np.nanstd(flux_seg), Vcp = False)
+        mse = EH.MSEn(flux_seg, Mobj, Scales = tau, Methodx = 'coarse', 
+                  RadNew = 0, Plotx = False) 
+        
+        msx = np.arange(1,tau+1,1)
+        msy = mse[0]
+        
+        idx = np.isfinite(msx) & np.isfinite(msy)
+        msx = msx[idx]; msy = msy[idx]       
 
-    return  np.nanmean(msy**2), (msy[-1]-msy[0]) / tau, z2[0]
+        if ax != None:
+
+            print(np.nanmean(msy**2)/tau,(msy[-1]-msy[0])/tau, tau)
+            try:
+                ax.plot(msx,msy,'o',label=f'T{int(time[l])}-{int(time[h-1])}')
+            except:
+                ax.plot(msx,msy,'ro')               
+            z2 = np.polyfit(msx,msy,deg=2)
+            f2 = np.poly1d(z2) 
+            ax.plot(msx,f2(msx))            
+            
+        seg_stat.append([np.nanmean(msy**2)/tau,(msy[-1]-msy[0])/tau, tau])
+        
+    return np.nanmedian(seg_stat, axis=0)
+   # return  np.nanmean(msy**2), (msy[-1]-msy[0]) / tau, z2[0]
 
 def k_cross(flux, kappa = 5):
     
@@ -576,7 +605,7 @@ def get_top(params, minf = 0.):
     for c in amp_cols:
         
         f = int(c[-1:]) * params['frequency']
-        mask = f > minf
+        mask = f >= minf
         
         s += np.nansum(params[c][mask]**2)
     
@@ -591,7 +620,7 @@ def get_wfm(params, minf = 0.):
     for c in amp_cols: 
         
         f = int(c[-1:]) * params['frequency']
-        mask = f > minf
+        mask = f >= minf
 
         s += np.nansum((params[c][mask]**2) * f[mask])
     
@@ -607,7 +636,7 @@ def get_wfd(params, minf = 0.):
     for c in amp_cols:
         
         f = int(c[-1:]) * params['frequency']
-        mask = f > minf
+        mask = f >= minf
         
         s += np.nansum( (params[c][mask]**2) * (f[mask] - wfm)**2 )
         

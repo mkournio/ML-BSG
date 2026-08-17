@@ -28,12 +28,12 @@ class Visualize(GridTemplate):
      self._validate()
      self.data = data
      self.plot_key = plot_key
-
+     
      super().__init__(rows_page = rows_page, 
                       cols_page = cols_page,
-                      fig_xlabel= PLOT_XLABEL['lc'], 
-                      fig_ylabel=PLOT_YLABEL[plot_key], 
-                      **kwargs)	 
+                      fig_xlabel = PLOT_XLABEL[plot_key], 
+                      fig_ylabel = PLOT_YLABEL[plot_key], 
+                      **kwargs) 
      
      return
      
@@ -43,8 +43,9 @@ class Visualize(GridTemplate):
     def lightcurves(self, 
                     stitched = False, 
                     models = False,
-                    bin_size = None, 
+                    bin_size = '10m', 
                     lc_props = None,
+                    dict_log = {},
                     **kwargs):
         
         if bin_size not in ['10m','30m']:
@@ -55,19 +56,25 @@ class Visualize(GridTemplate):
         elif bin_size == '30m':
             bin_size = 0.02083
             
+        if 'output_path' in kwargs:
+            path_to_output_fits = kwargs['output_path']
+            
         ltab = self.data.copy()
-        log_file = open("log_vis_ems", "w")
+       # log_file = open("log_vis_ems", "w")
         
         for l in ltab:
             
             star = l['STAR']
             tic = l['TIC']
-            spc = l['SpC']
+            try:
+                spc = l['SpC']
+            except:
+                spc = ''
             
             filename = [f for f in os.listdir(path_to_output_fits) if star in f]
             if len(filename) > 0:
                 
-                print('plotting {} TIC {}'.format(star,tic))
+                print('LC plotting {} TIC {}'.format(star,tic))
                 
                 hdulist = fits.open(os.path.join(path_to_output_fits,filename[0]))
                 
@@ -94,13 +101,18 @@ class Visualize(GridTemplate):
                     grouped_hdu_bin = group_consecutive_hdus(hdu_bin,sectors)
                     plot_lc_multi(axes, grouped_hdu_bin, flux_key = self.plot_key, lc_type = 'binned')
                     
-                    if models :
+                    if models and self.plot_key == 'dmag':
                         plot_mod_multi(axes, grouped_hdu_mods, ref_hdus = grouped_hdu_bin, m='-', lw=0.6)
-                                   
+                     
+                    vlines = []   
+                    for obj in dict_log:
+                        if obj == star:
+                            vlines = dict_log[obj]
+                            
                     add_plot_features(axes, mode = self.plot_key,
                                       upper_left='{} (TIC {})'.format(star,tic), 
                                     #  upper_right='CROWD {:.2f}'.format(crowdsap),
-                                      lower_left=spc, y_min_max = minmax)
+                                      lower_left=spc, y_min_max = minmax, vlines = vlines)
                     
                 else:
                      
@@ -120,10 +132,10 @@ class Visualize(GridTemplate):
                                      if int(r[0]) == tic and int(r[1]) == sect:
                                              prop_args = [float(x) for x in r[2:]]
                          
-                         if self.plot_key == 'flux':
-                             plot_lc_single(ax, r, m='.', flux_key = self.plot_key, lc_type = r.header['PIPELINE'],**kwargs)
+                        # if self.plot_key == 'flux':
+                         plot_lc_single(ax, r, m='.', flux_key = self.plot_key, lc_type = r.header['PIPELINE'],**kwargs)
                          plot_lc_single(ax, b, flux_key = self.plot_key, lc_type = 'binned', prop_args = prop_args,**kwargs)
-                         if models:
+                         if models and self.plot_key == 'dmag':
                              mod_hdu = hdu_mods[i]
                              plot_mod_single(ax, mod_hdu, ref_hdu = b, ls='--', lw=1.3)
                   
@@ -131,9 +143,66 @@ class Visualize(GridTemplate):
                                            upper_left=star, lower_left=spc,
                                            lower_right='{} ({})'.format(tic,sect))
                          
-                log_file.write('{:30s} {:+.8f} {:+.8f} {:10s} {} {}\n'.format(star,l['RA'],l['DEC'],spc,tic,get_filename(self.filename,self.output_format)))
+             #   log_file.write('{:30s} {:+.8f} {:+.8f} {:10s} {} {}\n'.format(star,l['RA'],l['DEC'],spc,tic,get_filename(self.filename,self.output_format)))
  
         self.close_plot()
-        log_file.close()
+     #   log_file.close()
         
         return
+    
+    def periodograms(self,
+                     bin_size = '10m',
+                     **kwargs
+                     ):
+        
+        if bin_size not in ['10m','30m']:
+            raise Exception('Set bin_size among 10m and 30m. Aborting..')
+            
+        if bin_size == '10m':
+            bin_size = 0.00694
+        elif bin_size == '30m':
+            bin_size = 0.02083       
+    
+        ltab = self.data.copy()
+        
+        for l in ltab:
+            
+            star = l['STAR']
+            tic = l['TIC']
+            spc = l['SpC']
+            
+            filename = [f for f in os.listdir(path_to_output_fits) if star in f]
+            if len(filename) > 0:
+                
+                print('LS plotting {} TIC {}'.format(star,tic))
+                
+                hdulist = fits.open(os.path.join(path_to_output_fits,filename[0]))
+                
+                sectors = get_sectors_from_hdulist(hdulist)
+                hdu_pgs = [get_hdu_from_keys(hdulist, SECTOR = s, HDUTYPE = 'PERIODOGRAMS', BINNING = 'T', BINSIZE = str(bin_size))[0] for s in sectors]
+                hdu_rns = [get_hdu_from_keys(hdulist, SECTOR = s, HDUTYPE = 'FREQUENCIES', BINNING = 'T', BINSIZE = str(bin_size))[0] for s in sectors]
+                
+                for i in range(len(hdu_pgs)):
+                      
+                      pg = hdu_pgs[i]
+                      rn = hdu_rns[i]
+                      sect = sectors[i]
+                      
+                      ax = self.GridAx()
+                      
+                      plot_ls_single(ax, pg, model = rn, **kwargs)
+                      
+                      add_plot_features(ax, mode = self.plot_key,
+                                        upper_left=star, lower_left=spc,
+                                        upper_right='{} ({})'.format(tic,sect))
+                
+        self.close_plot()
+        
+        return
+                
+
+   
+    
+    
+    
+    

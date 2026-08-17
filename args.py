@@ -50,7 +50,10 @@ APPEND_COLS= {
                       **galcoord('GLON','GLAT',keys=['RA','DEC']),
                       **dist('DIST',keys=['GAL','GDIST']),
                       **absmag('MJ','MH','MK','MG',keys=['Jmag','Hmag','Kmag','Gmag','DIST']),
-                      **diffcol('BR','JK',keys=[['BPmag','RPmag'],['Jmag','Kmag']]),
+                      **diffcol('BR','JK','JH','HK','KW4','W14','W24','W34',
+                                keys=[['BPmag','RPmag'],['Jmag','Kmag'],['Jmag','Hmag'],
+                                      ['Hmag','Kmag'],['Kmag','W4mag'],['W1mag','W4mag'],
+                                      ['W2mag','W4mag'],['W3mag','W4mag']]),
                       **slogl('SLOGL',keys=['TEFF','LOGG']),
                       **spc2t('SpCt',keys=['SpC'])
                       }
