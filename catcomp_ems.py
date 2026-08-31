@@ -92,7 +92,7 @@ LS = Visualize(data=cm,
 '''
 
 ############# METRICS
-time_metrics = ['EMSE1','EMSE0','MAD','MAD_RAW','ETA']
+time_metrics = ['MAD_RAW','MAD','PSI','EMSE1','EMSE0']
 freq_metrics = ['WFM','WFD']
 rn_metrics = ['W0','R0','TAU','GAMMA']
 
@@ -106,74 +106,64 @@ rn_metrics = ['W0','R0','TAU','GAMMA']
 #fl = FitsList(cm); fl.remove_header_keys(keys = freq_metrics)
 #fd = FrequencyDomain(data = cm, measures = freq_metrics).calculate(min_freq = 0.1)
 
-  
 
-
+############# ML METHODS
 feats = Features()
-ftab = feats.get_from_sectors(
+feats.get_from_sectors(
     input_cat = cm,
     time_keys = time_metrics + ['SECTOR','CROWDSAP'], 
     freq_keys = freq_metrics,
     rn_keys = rn_metrics,
     calc_keys = ['JH','HK','KW4','W14','W24','W34','Q_JHK'],
-    log_convert = ['IQR','PSI','ETA','MAD','MAD_RAW','TOP','W0','R0','MSE0','EMSE0'],
+    log_convert = ['IQR','ETA','W0','R0','PSI','MAD','MAD_RAW','TOP','MSE0','EMSE0'],
     save_output = None)
+feats.merge_cand()
+
+### CORNER PLOTS
+#feats.corner_plot(plot_cols = time_metrics, hue = 'SpC',outlier_sigma=5.)
+#feats.corner_plot(plot_cols = freq_metrics+rn_metrics, hue = 'SpC',outlier_sigma=5.)
+
+var_cols = time_metrics + rn_metrics + freq_metrics
+agg_cols = var_cols + ['Tmag','CROWDSAP','Q_JHK','HK','JH']
+ml_kwargs = {
+    'agg_type' :'median', 'agg_cols': agg_cols, 'split_cand' : False,
+    'var_cols' : var_cols, 'scaler_type' : 'standard', 'pca_components': 6,
+    'kn' : 3, 'n_perm': 0, 'umap_min_dist': 0.1, 'min_cluster_size': 3,
+              }
+
+feats.aggregate(group_by = ['STAR','SpC'], **ml_kwargs)
+
+#### PAIR PLOTS
+'''feats.pair_plot(['W0','Tmag'], star_labels = True)
+fig, ax = plt.subplots(2, 1, sharex =  True, figsize = (8,16)); ax= ax.flatten()
+feats.pair_plot(ax = ax[0], pair_c = ['HK','JH'])
+feats.pair_plot(ax = ax[1], pair_c = ['HK','Q_JHK'], star_labels = True)
+ax[0].set_xticklabels([]); ax[0].set_xlabel('')
+fig.subplots_adjust(hspace=0.02); fig.tight_layout()'''
 
 
-#print(ftab[['STAR','SECTOR'] + freq_metrics])
- 
-#ftab_agg = feats._aggregate(cols = rn_metrics, mode='median',
-#                     group_by = ['STAR','SpC','TIC'],
-#                     save_output = None) 
-#print(ftab_agg[['STAR'] + rn_metrics])
+ml_kwargs['var_cols'].remove('W0')
+#### CLASSIFIERS - REGRESSORS
+#feats.knn_classify(**ml_kwargs)
+#feats.knn_regress(regress_col='HK', exclude_labels=[],**ml_kwargs)
+nn_table = feats.nearest_neighbors(**ml_kwargs)#; print(nn_table)
+feats.umap_plot(umap_n = 20, **ml_kwargs)
 
-#print(ftab)
-
-#feats.pair_plot(plot_cols = time_metrics, hue = 'SpC',aggregate_type='none',outlier_sigma=5)
-#feats.pair_plot(plot_cols = freq_metrics, hue = 'SpC',aggregate_type='none')
-#feats.pair_plot(plot_cols = rn_metrics, hue = 'SpC',aggregate_type='none',outlier_sigma=10.)
-#feats.pair_plot(plot_cols = time_metrics+freq_metrics+rn_metrics, hue = 'SpC',aggregate_type='none',outlier_sigma=10.)
-
-#feats.pair_plot_single(pair_cols=['Q_JHK','HK'])
-
-#feats.pair_plot(plot_cols = time_metrics + frequency_metrics + rn_metrics,
-#                hue = 'SpC',aggregate_type='none')
+feats.hier_clustering(k = 2, **ml_kwargs)
+#feats.hdbscan_clustering(**ml_kwargs)
+#feats.umap_plot(cbar_col = ['DIST_PCA'], umap_n = 20, **ml_kwargs)
+#feats.local_outlier_factor(**ml_kwargs)
 
 
-pca = 7
-min_dist = 0.09
-feats.knn_classify(var_cols = time_metrics+rn_metrics+freq_metrics,
-                 aggregate_type='median', scaler_type = 'standard',
-                 pca_components=pca,n_perm=0)
+#### UMAP PLOTS
+'''fig, ax = plt.subplots(1,2, figsize = (18,8)); ax= ax.flatten()
+feats.umap_plot(ax=ax[0], umap_n = 6, **ml_kwargs)
+feats.umap_plot(ax=ax[1], umap_n = 20, **ml_kwargs)
 
-feats.knn_regress(var_cols = time_metrics+rn_metrics+freq_metrics,
-                  regress_col='Tmag', aggregate_type='median', 
-                  scaler_type = 'standard', pca_components=pca,n_perm=1000)
-
-
-#print(feats)
-'''
-
-fig, ax = plt.subplots(1,2); ax= ax.flatten()
-feats.umap_plot(ax=ax[0], var_cols = time_metrics+rn_metrics+freq_metrics,
-                aggregate_type = 'median', scaler_type = 'standard',
-                n_neighbors=6, min_dist=min_dist, pca_components=pca)
-feats.umap_plot(ax=ax[1], var_cols = time_metrics+rn_metrics+freq_metrics,
-                aggregate_type = 'median', scaler_type = 'standard',
-                n_neighbors=20, min_dist=min_dist, pca_components=pca)
-
-fig, ax = plt.subplots(1,3); ax= ax.flatten()
-feats.umap_plot(ax=ax[0], var_cols = time_metrics+rn_metrics+freq_metrics,
-                cbar_col = ['Tmag'], 
-                aggregate_type = 'median', scaler_type = 'standard',
-                n_neighbors=20, min_dist=min_dist, pca_components=pca)
-feats.umap_plot(ax=ax[1], var_cols = time_metrics+rn_metrics+freq_metrics,
-                cbar_col = ['CROWDSAP'], 
-                aggregate_type = 'median', scaler_type = 'standard',
-                n_neighbors=20, min_dist=min_dist, pca_components=pca)
-feats.umap_plot(ax=ax[2], var_cols = time_metrics+rn_metrics+freq_metrics,
-                cbar_col = ['Q_JHK'], 
-                aggregate_type = 'median', scaler_type = 'standard',
-                n_neighbors=20, min_dist=min_dist, pca_components=pca)
-plt.tight_layout(wspace=0,hspace=0)
-'''
+fig, ax = plt.subplots(1,3, figsize = (18,6)); ax= ax.flatten()
+feats.umap_plot(ax=ax[0], cbar_col = ['Tmag'], umap_n = 6, **ml_kwargs)
+feats.umap_plot(ax=ax[1], cbar_col = ['Q_JHK'], umap_n = 6, **ml_kwargs)
+feats.umap_plot(ax=ax[2], cbar_col = ['CROWDSAP'], umap_n = 6, **ml_kwargs)
+ax[1].set_yticklabels([]); ax[1].set_ylabel('')
+ax[2].set_yticklabels([]); ax[2].set_ylabel('')
+fig.subplots_adjust(wspace=0.0); fig.tight_layout()'''

@@ -349,7 +349,7 @@ def normalize(lc, deg = 2, coeff = None):
         time = lc.time.value
         flux = lc.flux.value
         try:
-            flux_err = lc.flux_err.value
+            flux_err = np.zeros(len(flux))#lc.flux_err.value
         except:
             flux_err = np.zeros(len(flux))
             
@@ -596,6 +596,28 @@ def get_hpr(params):
             s += np.nansum(params[c]**2)
         
         return s / np.nansum(params['amplitude_1']**2)
+    
+    
+def freq_indep(params, weight_lim = 0.1, minf = 0.09):
+    
+    amp_cols = [x for x in params.columns.names if 'amplitude_' in x]
+    
+    s = np.nansum([params[c]**2 for c in amp_cols], axis = 0)
+    
+    freqs = []
+    for c in amp_cols:
+        
+        f = int(c[-1:]) * params['frequency']
+        w = params[c]**2 / s
+        mask = w > weight_lim
+        
+        f = f[mask]
+        f = f[f >= minf]
+
+        freqs.extend(f)        
+    
+    return freqs
+
 
 def get_top(params, minf = 0.):    
   
@@ -679,6 +701,19 @@ def save_three_col(lc, filename, meta, units = 'mag'):
     f.close()
     
     return
+
+def st(v):
+    
+    stv = v
+    for d in [STY_LB,STAR_IDS]:
+        for key in d:
+            if key == v:
+                stv = d[key]
+                
+    return stv
+            
+    
+    
 
 def fourier_series(t,params):
     
