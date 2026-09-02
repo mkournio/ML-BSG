@@ -112,12 +112,13 @@ STY_LB = 	{
         'WFM': r'$\bar{f}_{w}$', 'WFD': r'$\sigma_{f,w}$',
         'HK': r'$H-K_{s}$', 'Q_JHK': r'$Q_{JHK}$', 'JH': r'$J-H$',
         'MSM' : r'MSM', 'MSP' : r'$\bar{{E_s}^2}$', 'MSD' : r'$\sigma_{E_s}$', 'MSC' : r'$\kappa_{E_s}$', 'MSS' : r'$m_{E_s}$',
-        'AVECROWD': r'CROWDSAP', 'MINCROWD': r'CROWDSAP', 'Tmag': r'T [mag]', 'RUWE':r'RUWE',
+        'AVECROWD': r'CROWDSAP', 'MINCROWD': r'CROWDSAP', 'Tmag': r'$T$ [mag]', 'RUWE':r'RUWE',
 		'MG' : r'$M_{G}$ [mag]', 'MJ' : r'$M_{J}$ [mag]', 'MH' : r'$M_{H}$ [mag]', 'MK': r'$M_{K}$ [mag]', 
         'JK': r'$J-K_{s}$', 'VCHAR' : r'log($\nu_{char}$ [d$^{-1}$])', 'BR': r'$B_{p}-R_{p}$',
 		'FF' : r'$f_{i}$ [d$^{-1}$]', 'A_FF' : r'$A_{i}$ [mag]', 'HF' : r'$jf$', 'FFR' : r'$f_{1}/f_{2}$', 
 		'A_FFR' : r'$A_{f_{1}}/A_{f_{2}}$', 'BETA' : r'$\beta$', 'VINF' : r'$v_{inf}$ [km s$^{-1}$]',
-		'INDFF' : r'#$f_{i}$','INDFFS' : r'#$f_{i,sec}$'}
+		'INDFF' : r'#$f_{i}$','INDFFS' : r'#$f_{i,sec}$',
+        'STAR': 'Star', 'SpC': 'Class'}
 
 LC_COLOR = 	{
 		'spoc'	 : 'c',
@@ -213,6 +214,14 @@ dendro_kwargs={
     }
 
 
+umap_kwargs={
+    "axes.labelsize" : 18, 
+    "font.size": 8,
+    "xtick.labelsize": 16,
+    "ytick.labelsize": 16,
+    }
+
+
 CLASS_M = {
     'B[e]SG' : 's',
     'LBV' : '^',
@@ -224,3 +233,22 @@ CLASS_C = {
     'LBV' : 'g',
     'YHG' : 'r'
     }
+
+TEX_SAMPLE_TAB=	{ 
+	        'tabletype': 'table*',
+		'data_end': r'\hline',
+		'header_end': r'\hline', 
+		'header_start': r'\hline\hline',
+		}
+
+TEX_FREQ_TAB = {
+		'PRE'  :  ("\\begin{table*}\n"
+			   "\\caption{\\label{sample} List of frequencies.}\n"
+			   "\\begin{tabular}{l c c c c}\n"
+			   "\\hline\\\n"
+			   "Star & Sector & ID & Frequency & SNR\\\\\n"
+			   "\\hline\n") ,
+		'POST' :  ("\\hline\n"
+			   "\\end{tabular}\n"
+			   "\\end{table*}")
+		}

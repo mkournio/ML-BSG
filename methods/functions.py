@@ -618,6 +618,22 @@ def freq_indep(params, weight_lim = 0.1, minf = 0.09):
     
     return freqs
 
+def freq_indep_sn(params, pow_lim = 0.01, minf = 0.09):
+    
+    params = params[params['frequency'] > minf]
+    
+    amp_cols = [x for x in params.columns.names if 'amplitude_' in x]    
+    max_a = max([params[0][c] for c in amp_cols])
+    
+    freqs = []
+    for c in amp_cols:
+        
+        f = int(c[-1:]) * params['frequency']
+        mask = (params[c]/max_a)**2 > pow_lim
+        
+        freqs.extend(f[mask])
+        
+    return freqs
 
 def get_top(params, minf = 0.):    
   

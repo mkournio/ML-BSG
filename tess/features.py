@@ -189,7 +189,7 @@ class Features:
             except:
                 pass
             
-        #print(self[['STAR','SpC','Tmag']])                
+       # print(self[['STAR','SpC','Tmag']])                
                 
         if 'save_output' in kwargs:
             self.df.to_csv(kwargs['save_output'],index=False)            
@@ -308,7 +308,7 @@ class Features:
                   cbar_col = [],
                   umap_n = 5,
                   umap_min_dist = 0.1,
-                  show_mutual = True,
+                  show_mutual = False,
                   **kwargs):
         
         pca_variables = self._pca_transform(**kwargs)
@@ -318,10 +318,12 @@ class Features:
         
         if show_mutual:
             knn_tab = self.nearest_neighbors(**kwargs) 
-            print(knn_tab)
+            #print(knn_tab)
 
         if ax is None:
          _, ax = plt.subplots(figsize=(8, 6))
+         
+        plt.rcParams.update(**umap_kwargs)
          
         if len(cbar_col) == 1:            
             cbc = self.df[cbar_col]
@@ -353,11 +355,17 @@ class Features:
             ax.plot(ustar[:,0],ustar[:,1], CLASS_M[spt], c = c, ms = 10, zorder=2)
             if '?' in spt:
                 ax.plot(ustar[:,0],ustar[:,1], CLASS_M[spt], c = 'w', ms = 4, zorder=2)
-            ax.text(ustar[0,0]-0.05,ustar[0,1]-0.18, st(s)[0], size = 6)
-            #ax.plot(ustar[:,0],ustar[:,1],'k',lw=0.1)           
+                
+            yl0, yl1 = ax.get_ylim()
+            xl0, xl1 = ax.get_xlim()            
+            ax.text(ustar[:,0] + 0.01 * (xl1-xl0),
+                    ustar[:,1] - 0.02 * (yl1-yl0), st(s)[0])
+            #ax.plot(ustar[:,0],ustar[:,1],'k',lw=0.1) 
+            
+        ax.text(0.03,0.95, 'n = %s' % umap_n, fontsize = 17, transform = ax.transAxes)
 
-        ax.set_xlabel('UMAP 1', fontsize=10)
-        ax.set_ylabel('UMAP 2', fontsize=10)
+        ax.set_xlabel('UMAP 1')
+        ax.set_ylabel('UMAP 2')
       #  if len(cbar_col) == 1:
       #      extend = 'neither'
       #      if cbar_col[0] == 'Q_JHK' or cbar_col[0] == 'CROWDSAP': extend = 'min'

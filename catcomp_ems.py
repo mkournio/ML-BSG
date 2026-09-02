@@ -12,6 +12,7 @@ import pandas as pd
 from tess import *
 import numpy as np
 from astropy.io import ascii
+from astropy.table import Table
 
 #xc = PreProcess(args).compile()
 #GDW =  [(not any(y in x for y in ('III','V','O9','A0','A1','A2','A3','ON','OC'))) or ('LBV' in x) for x in xc['SpC']]
@@ -92,7 +93,7 @@ LS = Visualize(data=cm,
 '''
 
 ############# METRICS
-time_metrics = ['MAD_RAW','MAD','PSI','EMSE1','EMSE0']
+time_metrics = ['MAD_RAW','MAD','ETA','EMSE1','EMSE0']
 freq_metrics = ['WFM','WFD']
 rn_metrics = ['W0','R0','TAU','GAMMA']
 
@@ -124,14 +125,20 @@ feats.merge_cand()
 #feats.corner_plot(plot_cols = freq_metrics+rn_metrics, hue = 'SpC',outlier_sigma=5.)
 
 var_cols = time_metrics + rn_metrics + freq_metrics
-agg_cols = var_cols + ['Tmag','CROWDSAP','Q_JHK','HK','JH']
+agg_cols = var_cols + ['Tmag','CROWDSAP','Q_JHK','HK','JH','Jmag','Hmag','Kmag']
 ml_kwargs = {
     'agg_type' :'median', 'agg_cols': agg_cols, 'split_cand' : False,
     'var_cols' : var_cols, 'scaler_type' : 'standard', 'pca_components': 6,
-    'kn' : 3, 'n_perm': 0, 'umap_min_dist': 0.1, 'min_cluster_size': 3,
-              }
+    'kn' : 3, 'n_perm': 0, 'umap_min_dist': 0.1, 'min_cluster_size': 3
+    }
+   
+TT = TexTab()
+print(feats.df[['STAR','SECTOR'] + freq_metrics])
 
-feats.aggregate(group_by = ['STAR','SpC'], **ml_kwargs)
+feats.aggregate(group_by = ['STAR','SpC','TIC','RA','DEC'], **ml_kwargs)
+
+# SAMPLE PRINTING
+#TT.TabSample(feats.df[['STAR','RA','DEC','SpC','Tmag','Q_JHK','TIC','CROWDSAP']].sort_values('RA'))
 
 #### PAIR PLOTS
 '''feats.pair_plot(['W0','Tmag'], star_labels = True)
@@ -146,24 +153,26 @@ ml_kwargs['var_cols'].remove('W0')
 #### CLASSIFIERS - REGRESSORS
 #feats.knn_classify(**ml_kwargs)
 #feats.knn_regress(regress_col='HK', exclude_labels=[],**ml_kwargs)
-nn_table = feats.nearest_neighbors(**ml_kwargs)#; print(nn_table)
-feats.umap_plot(umap_n = 20, **ml_kwargs)
+#nn_table = feats.nearest_neighbors(**ml_kwargs)#; print(nn_table)
+#feats.umap_plot(umap_n = 20, **ml_kwargs)
 
-feats.hier_clustering(k = 2, **ml_kwargs)
+#feats.hier_clustering(k = 2, **ml_kwargs)
 #feats.hdbscan_clustering(**ml_kwargs)
 #feats.umap_plot(cbar_col = ['DIST_PCA'], umap_n = 20, **ml_kwargs)
 #feats.local_outlier_factor(**ml_kwargs)
 
 
 #### UMAP PLOTS
-'''fig, ax = plt.subplots(1,2, figsize = (18,8)); ax= ax.flatten()
+fig, ax = plt.subplots(1, 2, figsize = (18,10)); ax= ax.flatten()
 feats.umap_plot(ax=ax[0], umap_n = 6, **ml_kwargs)
-feats.umap_plot(ax=ax[1], umap_n = 20, **ml_kwargs)
+feats.umap_plot(ax=ax[1], umap_n = 20, **ml_kwargs) 
+fig.tight_layout(); fig.savefig('UMAP.eps', format = 'eps')
 
-fig, ax = plt.subplots(1,3, figsize = (18,6)); ax= ax.flatten()
+'''fig, ax = plt.subplots(1,3, figsize = (18,6)); ax= ax.flatten()
 feats.umap_plot(ax=ax[0], cbar_col = ['Tmag'], umap_n = 6, **ml_kwargs)
 feats.umap_plot(ax=ax[1], cbar_col = ['Q_JHK'], umap_n = 6, **ml_kwargs)
 feats.umap_plot(ax=ax[2], cbar_col = ['CROWDSAP'], umap_n = 6, **ml_kwargs)
 ax[1].set_yticklabels([]); ax[1].set_ylabel('')
 ax[2].set_yticklabels([]); ax[2].set_ylabel('')
 fig.subplots_adjust(wspace=0.0); fig.tight_layout()'''
+
