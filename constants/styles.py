@@ -28,11 +28,11 @@ PLOT_YLABEL =   {
         
 GAIA_UPMARK = 64
 
-SIZE_FONT_SUB = 12
-SIZE_XLABEL_FIG = 22
-SIZE_YLABEL_FIG = 22
-SIZE_XLABEL_SUB = 11
-SIZE_YLABEL_SUB = 11
+SIZE_FONT_SUB = 16
+SIZE_XLABEL_FIG = 28
+SIZE_YLABEL_FIG = 28
+SIZE_XLABEL_SUB = 20
+SIZE_YLABEL_SUB = 15
 
 SIZE_GRID = (26,20)#(16,20)
 
@@ -120,9 +120,9 @@ STY_LB = 	{
 		'INDFF' : r'#$f_{i}$','INDFFS' : r'#$f_{i,sec}$',
         'STAR': 'Star', 'SpC': 'Class'}
 
-LC_COLOR = 	{
-		'spoc'	 : 'c',
-        'tess-spoc' : 'lime',
+LC_COLOR = 	{    
+        'B[e]SG' : 'c',
+        'LBV' : 'pink',
         'model' : 'r',
         'binned': 'k',
 		'tesscut'	 : 'r',
@@ -148,9 +148,9 @@ TESS_AP_C = {
 
 
 STAR_IDS = {
-    '6 CAS': [r'6$\,$Cas',1,0,0,0,0,0],
-    'AG Car': [r'AG$\,$Car',0,1,1,1,0,1],
-    'CD-42 11721': [r'CD-42$\,$11721',1,0,1,1,1,1],
+    '6 CAS': [r'6$\,$Cas'],
+    'AG Car': [r'AG$\,$Car'],
+    'CD-42 11721': [r'CD-42$\,$11721'],
     'CPD-52 9243': [r'CPD-52$\,$9243'],
     'Cyg OB2 12': [r'Cyg$\,$OB2-12'],
     'GG Car': [r'GG$\,$Car'],
@@ -209,13 +209,14 @@ pairplot_kwargs={
 dendro_kwargs={
     "axes.labelsize" : 14, 
     "axes.titlesize" : 14,
-    "xtick.labelsize": 14,
+    "xtick.labelsize": 16,
     "ytick.labelsize": 14,
     }
 
 
 umap_kwargs={
     "axes.labelsize" : 18, 
+    "lines.markersize": 13,
     "font.size": 8,
     "xtick.labelsize": 16,
     "ytick.labelsize": 16,
@@ -230,8 +231,8 @@ CLASS_M = {
 
 CLASS_C = {
     'B[e]SG' : 'b',
-    'LBV' : 'g',
-    'YHG' : 'r'
+    'LBV' : 'r',
+    'YHG' : 'g'
     }
 
 TEX_SAMPLE_TAB=	{ 

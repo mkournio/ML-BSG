@@ -116,6 +116,43 @@ class Gaia(object):
         return ax
 
    
+def query_tpf(tic, 
+              sector, 
+              query_service = 'mast', 
+              **kwargs):
+    
+    if query_service == 'mast':
+        
+        search = lk.search_targetpixelfile('TIC %s' % tic)
+        sect_mask = search.mission == 'TESS Sector %02d' % sector
+        search = search[sect_mask]
+        
+        if any(search.author == 'SPOC'):
+            search = search[search.author == 'SPOC']
+        else:
+            search = search[search.author == 'TESS-SPOC']
+            
+        tpf = search.download(quality_bitmask='default', download_dir=path_to_tpfs)
+        
+    elif query_service == 'tesscut':
+        
+        pass       
+    
+    return tpf
+    
+def get_gaia(tic,
+             gaia_cat = 'I/355/gaiadr3',
+             r_arcsec = 250,
+             **kwargs):
+    
+    vizier = Vizier(catalog=gaia_cat,
+                    columns=['+_r','RAJ2000','DEJ2000','Source','RPmag','Gmag'],
+                    column_filters={'Rmag': '< 18'}); vizier.ROW_LIMIT = -1    
+    result = vizier.query_region(SkyCoord.from_name('TIC %s' % tic), 
+                                 radius= r_arcsec * u.arcsec)
+    
+    return result[0]
+
 def getmask(tpf, star_row = None, star_col = None, thres = 0.1):
     
     if star_row == None:
@@ -620,20 +657,36 @@ def freq_indep(params, weight_lim = 0.1, minf = 0.09):
 
 def freq_indep_sn(params, pow_lim = 0.01, minf = 0.09):
     
+    if isinstance(pow_lim,float):
+        pow_min = pow_lim
+        pow_max = 1.0
+    elif len(pow_lim) == 2:
+        pow_min, pow_max = pow_lim
+    else:        
+        print('Define either a power limit or interval')
+        
+        return
+    
     params = params[params['frequency'] > minf]
     
     amp_cols = [x for x in params.columns.names if 'amplitude_' in x]    
-    max_a = max([params[0][c] for c in amp_cols])
+    try:
+        max_a = max([params[0][c] for c in amp_cols])
+    except:
+        return []
     
     freqs = []
+    freq_ind = []
     for c in amp_cols:
         
         f = int(c[-1:]) * params['frequency']
-        mask = (params[c]/max_a)**2 > pow_lim
-        
+        mask = ((params[c]/max_a)**2 > pow_min) & ((params[c]/max_a)**2 <= pow_max)
         freqs.extend(f[mask])
+        freq_ind.extend(np.where(mask)[0].tolist())        
         
-    return freqs
+    freqs_sorted = [x for _,x in sorted(zip(freq_ind,freqs))]      
+        
+    return freqs_sorted
 
 def get_top(params, minf = 0.):    
   
@@ -679,6 +732,10 @@ def get_wfd(params, minf = 0.):
         s += np.nansum( (params[c][mask]**2) * (f[mask] - wfm)**2 )
         
     return np.sqrt( s / top )
+
+def get_fsteps(params):
+    
+    return len(params)-1
 
 def get_sen(spec):
     

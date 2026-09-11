@@ -566,6 +566,18 @@ class Extract(GridTemplate):
           
         return ax_lc
     
+    def _extract_halo_lc(
+            self,
+            path_to_tpf_file,
+            time_bin,
+            lc_type = None,
+            gaps = [],
+            **kwargs):
+        
+        
+        return ax_lc
+    
+    
     def header_key(self, 
                    key = 'TIMEDEL', 
                    mode = 'ALL',  

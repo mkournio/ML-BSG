@@ -101,6 +101,9 @@ def plot_lc_single(ax,
 
         #ax.invert_yaxis() 
         
+    plt.ticklabel_format(style='sci')           
+
+        
     return ax
 
 def plot_lc_multi(axes,
@@ -208,6 +211,7 @@ def plot_mod_multi(axes,
 def plot_ls_single(ax, 
                    ls,
                    model = None,
+                   c_class = 'any',
                    **kwargs):    
     if ls is None:
         return
@@ -222,13 +226,13 @@ def plot_ls_single(ax,
     if ax is None:
      _, ax = plt.subplots()        
 
-    ax.plot(freq,ampl_ini,'k')
+    ax.plot(freq,ampl_ini,LC_COLOR[c_class],lw=2)
     ax.plot(freq,ampl_end,'0.6')
     if isinstance(model, fits.BinTableHDU):
         hdr = model.header
         mod = model.data[-1]
         rn_prop = [mod['W0'],mod['R0'],mod['TAU'],mod['GAMMA']]
-        ax.plot(freq,lorentz(freq,*rn_prop),'r')
+        ax.plot(freq,lorentz(freq,*rn_prop),'k--',lw=2)
 
     ax.set_xscale('log')
     ax.set_yscale('log')
@@ -332,7 +336,7 @@ def add_plot_features(ax,mode = 'flux',upper_left='',lower_left='',lower_right='
         for ax_d in ax:
             xlims = ax_d.get_xlim() 
             if v > xlims[0] and v < xlims[1]:
-                ax_d.axvline(x=v)    
+                ax_d.axvline(x=v)                   
         
     return ax
 
@@ -516,8 +520,8 @@ class GridTemplate(object):
         
         self.glob_ax = self.fig.add_subplot(self.gs[:self.ax_pos+1, :], frameon=False)
         self.glob_ax.tick_params(labelleft = False, labelbottom = False, bottom = False, left = False)
-        self.glob_ax.set_xlabel(self.fig_xlabel, fontsize = SIZE_XLABEL_FIG, labelpad=30)
-        self.glob_ax.set_ylabel(self.fig_ylabel, fontsize = SIZE_YLABEL_FIG, labelpad=55)
+        self.glob_ax.set_xlabel(self.fig_xlabel, fontsize = SIZE_XLABEL_FIG, labelpad=55)
+        self.glob_ax.set_ylabel(self.fig_ylabel, fontsize = SIZE_YLABEL_FIG, labelpad=60)
         
         if self.output_format != None:
             

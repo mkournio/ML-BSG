@@ -27,7 +27,17 @@ LOC = [('MW' in x) for x in cm['GAL']]
 #LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
 cm = cm[LOC]
 
-#r = np.where(cm['STAR']=='HD62623')[0][0]; cm = cm[r:r+1]
+CLASS = [('B[e]SG' in x) or ('LBV' in x) for x in cm['SpC']]
+cm = cm[CLASS]
+
+CROBJ = ['Hen 3-519','[GKF2010] MN44','WRAY 16-232','V439 Cyg','MWC349']
+crmask = [(x not in CROBJ) for x in cm['STAR']]
+cm = cm[crmask]
+
+#cm = cm[:1]
+
+#r = np.where(cm['STAR']=='HD62623')[0][0] 
+#cm = cm[:5]
 #cstars = ['HD96918','HR5171','HR8752','6 CAS','RHO CAS']
 #cstars = ['HD62623','P Cyg']
 #cstars = [
@@ -72,31 +82,39 @@ PGs.periodograms(snr_file = 'ls_snr',
 #'''
 ############# VISUALIZATION
 # LIGHTCURVES
-'''
-LC = Visualize(data=cm,
-                plot_name='vn_ems', 
+
+'''LC = Visualize(data=cm,
+                plot_name='lc', 
+                plot_key='flux', 
+                figsize = (25,30),
+                rows_page=8, 
+                cols_page=3, 
+                output_format='pdf').lightcurves(preview = 'preview_fig')'''
+
+'''LC = Visualize(data=cm,
+                plot_name='nlc', 
                 plot_key='dmag', 
-                figsize = (32,20),
-                rows_page=6, 
-                cols_page=6, 
-                output_format='png').lightcurves(models=True, trend = True)
-'''
+                figsize = (25,30),
+                rows_page=8, 
+                cols_page=3, 
+                output_format='pdf').lightcurves(models = True, preview = 'preview_fig')'''
+
 # PERIODOGRAMS
-'''
+
 LS = Visualize(data=cm,
-                plot_name='ls_ems', 
+                plot_name='ls', 
                 plot_key='ls',
-                figsize = (32,20),
-                rows_page=6, 
-                cols_page=6, 
-                output_format='png').periodograms()
-'''
+                figsize = (25,30),
+                rows_page=8, 
+                cols_page=3, 
+                output_format='pdf').periodograms(preview = 'preview_fig')
+
 
 ############# METRICS
-time_metrics = ['MAD_RAW','MAD','ETA','EMSE1','EMSE0']
-freq_metrics = ['WFM','WFD']
+time_metrics = ['MAD_RAW','MAD','ETA','EMSE0','EMSE1']
+freq_metrics = ['WFM','WFD','FSTEPS']
 rn_metrics = ['W0','R0','TAU','GAMMA']
-
+#tl_metrics = ['TLPW','TLLW','TLPS','TLLS']
 # RESETING - REMOVING
 #fl = FitsList(cm); fl.add_header_keys(key_dict={'HDUTYPE':'LIGHTCURVE'})
 #fl = FitsList(cm); fl.remove_hdu(hdutypes=['FREQUENCIES','PERIODOGRAMS'])
@@ -107,8 +125,18 @@ rn_metrics = ['W0','R0','TAU','GAMMA']
 #fl = FitsList(cm); fl.remove_header_keys(keys = freq_metrics)
 #fd = FrequencyDomain(data = cm, measures = freq_metrics).calculate(min_freq = 0.1)
 
+#fl = FitsList(cm)
+#fd = FrequencyDomain(data = cm, measures = ['FSTEPS']).calculate(min_freq = 0.1)
+
+
+# CONTAMINATION - TESS LOCALIZE
+#fl = FitsList(cm); fl.remove_header_keys(keys = tl_metrics)
+#ct = Contamination(data = cm, measures = tl_metrics).calculate()
+
+
 
 ############# ML METHODS
+
 feats = Features()
 feats.get_from_sectors(
     input_cat = cm,
@@ -132,17 +160,19 @@ ml_kwargs = {
     'kn' : 3, 'n_perm': 0, 'umap_min_dist': 0.1, 'min_cluster_size': 3
     }
    
-TT = TexTab()
-print(feats.df[['STAR','SECTOR'] + freq_metrics])
-
+#print(feats.df[['STAR','SECTOR'] + freq_metrics])
 feats.aggregate(group_by = ['STAR','SpC','TIC','RA','DEC'], **ml_kwargs)
 
 # SAMPLE PRINTING
+#TT = TexTab()
 #TT.TabSample(feats.df[['STAR','RA','DEC','SpC','Tmag','Q_JHK','TIC','CROWDSAP']].sort_values('RA'))
 
 #### PAIR PLOTS
-'''feats.pair_plot(['W0','Tmag'], star_labels = True)
-fig, ax = plt.subplots(2, 1, sharex =  True, figsize = (8,16)); ax= ax.flatten()
+#feats.pair_plot(['EMSE1','Tmag'], star_labels = True)
+#feats.pair_plot(['EMSE1','CROWDSAP'], star_labels = True)
+#feats.pair_plot(['EMSE1','W0'], star_labels = True)
+
+'''fig, ax = plt.subplots(2, 1, sharex =  True, figsize = (8,16)); ax= ax.flatten()
 feats.pair_plot(ax = ax[0], pair_c = ['HK','JH'])
 feats.pair_plot(ax = ax[1], pair_c = ['HK','Q_JHK'], star_labels = True)
 ax[0].set_xticklabels([]); ax[0].set_xlabel('')
@@ -150,23 +180,26 @@ fig.subplots_adjust(hspace=0.02); fig.tight_layout()'''
 
 
 ml_kwargs['var_cols'].remove('W0')
+ml_kwargs['var_cols'].remove('FSTEPS')
+#ml_kwargs['var_cols'].remove('R0')
+
 #### CLASSIFIERS - REGRESSORS
 #feats.knn_classify(**ml_kwargs)
-#feats.knn_regress(regress_col='HK', exclude_labels=[],**ml_kwargs)
+#feats.knn_regress(regress_col='Q_JHK', exclude_labels=[],**ml_kwargs)
 #nn_table = feats.nearest_neighbors(**ml_kwargs)#; print(nn_table)
 #feats.umap_plot(umap_n = 20, **ml_kwargs)
-
-#feats.hier_clustering(k = 2, **ml_kwargs)
+#
+#feats.hier_clustering(k = 3, **ml_kwargs)
 #feats.hdbscan_clustering(**ml_kwargs)
 #feats.umap_plot(cbar_col = ['DIST_PCA'], umap_n = 20, **ml_kwargs)
 #feats.local_outlier_factor(**ml_kwargs)
 
 
 #### UMAP PLOTS
-fig, ax = plt.subplots(1, 2, figsize = (18,10)); ax= ax.flatten()
-feats.umap_plot(ax=ax[0], umap_n = 6, **ml_kwargs)
-feats.umap_plot(ax=ax[1], umap_n = 20, **ml_kwargs) 
-fig.tight_layout(); fig.savefig('UMAP.eps', format = 'eps')
+'''fig, ax = plt.subplots(1, 2, figsize = (18,10)); ax= ax.flatten()
+feats.umap_plot(ax=ax[0], umap_n = 6, random_state = 42, **ml_kwargs)
+feats.umap_plot(ax=ax[1], umap_n = 15, **ml_kwargs) 
+fig.tight_layout()'''#; fig.savefig('UMAP.eps', format = 'eps', dpi=150)
 
 '''fig, ax = plt.subplots(1,3, figsize = (18,6)); ax= ax.flatten()
 feats.umap_plot(ax=ax[0], cbar_col = ['Tmag'], umap_n = 6, **ml_kwargs)

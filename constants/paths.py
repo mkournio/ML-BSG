@@ -5,4 +5,5 @@ path_to_output_fits = 'output/fits/'
 path_to_cbv_files = 'data/CBVs/'
 path_to_cbv_val = 'output/CBV VALIDATION/'
 path_to_tpfs = 'data/TPFs/'
+path_to_output_localize = 'output/localize/'
 

@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from constants.paths import *
 from tess.measures import *
 from tess.extract import *
+from tess.contamination import *
 from tables.match import *
 import os
 

@@ -40,7 +40,7 @@ def mast_query(table,
            except Exception as e:
                print('Targetpixelfile: {}'.format(e))
      
-     return
+     return q
  
 def download_tpfs(table,
               frame = 0,

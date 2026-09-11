@@ -309,10 +309,11 @@ class Features:
                   umap_n = 5,
                   umap_min_dist = 0.1,
                   show_mutual = False,
+                  random_state = 0,
                   **kwargs):
         
         pca_variables = self._pca_transform(**kwargs)
-        umap_reducer = umap.UMAP(n_components = 2, random_state=0, 
+        umap_reducer = umap.UMAP(n_components = 2, random_state = random_state, 
                                  n_neighbors = umap_n, min_dist = umap_min_dist)
         umap_variables = umap_reducer.fit_transform(pca_variables) 
         
@@ -350,16 +351,16 @@ class Features:
                   if s in n_neighbors.to_numpy():
                       n_ustar = umap_variables[self.df['STAR'] == n]
                       ax.plot([ustar[:,0],n_ustar[:,0]],
-                              [ustar[:,1],n_ustar[:,1]],'k', lw = 0.3, zorder=1)
+                              [ustar[:,1],n_ustar[:,1]],'k', ls = (0, (5, 10)), lw = 0.4, zorder=1)
                       
-            ax.plot(ustar[:,0],ustar[:,1], CLASS_M[spt], c = c, ms = 10, zorder=2)
+            ax.plot(ustar[:,0],ustar[:,1], CLASS_M[spt], c = c, zorder=2)
             if '?' in spt:
                 ax.plot(ustar[:,0],ustar[:,1], CLASS_M[spt], c = 'w', ms = 4, zorder=2)
                 
             yl0, yl1 = ax.get_ylim()
             xl0, xl1 = ax.get_xlim()            
             ax.text(ustar[:,0] + 0.01 * (xl1-xl0),
-                    ustar[:,1] - 0.02 * (yl1-yl0), st(s)[0])
+                    ustar[:,1] - 0.03 * (yl1-yl0), st(s)[0])
             #ax.plot(ustar[:,0],ustar[:,1],'k',lw=0.1) 
             
         ax.text(0.03,0.95, 'n = %s' % umap_n, fontsize = 17, transform = ax.transAxes)
@@ -471,14 +472,16 @@ class Features:
                       **kwargs):
         
         x = self._pca_transform(**kwargs)
-        names = [st(x)[0] for x in self.df["STAR"]]
+        names = [st(star)[0] for star in self.df["STAR"]]
         label_colors = {}
         for n, c in zip(names,self.df["SpC"]):
             label_colors[n] = CLASS_C[c]
-                   
+            
+        threshold = 9
+
         if isinstance(k,int) and k > 1:
-            clust = AgglomerativeClustering(n_clusters = None, 
-                                            distance_threshold=9,
+            clust = AgglomerativeClustering(n_clusters = k, 
+                                            distance_threshold=None,
                                             linkage= "ward", 
                                             metric= "euclidean")
             labels = clust.fit_predict(x)
@@ -490,13 +493,13 @@ class Features:
             plt.rcParams.update(**dendro_kwargs)            
             plt.figure(figsize=(12, 5))
             dendrogram(Z, labels = names,
-                       color_threshold = 0.,
+                       color_threshold = 0,
                        above_threshold_color = 'k',
                        leaf_rotation=90, 
-                       leaf_font_size=10)
+                       leaf_font_size=12)
             plt.ylabel(r"Ward linkage distance")
             plt.title("Hierarchical clustering")
-            plt.axhline(y = 9, c='k', ls='--')
+            #plt.axhline(y = threshold, c='k', ls='--')
             ax = plt.gca()
             ax_labels = ax.get_xmajorticklabels()
             for lbl in ax_labels:
@@ -506,7 +509,7 @@ class Features:
             
         else:
             rows = []
-            for k in range(2, 8):
+            for k in range(2, 12):
                 clust = AgglomerativeClustering(n_clusters = k, 
                                                 linkage="ward", 
                                                 metric="euclidean")

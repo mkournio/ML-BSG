@@ -290,7 +290,7 @@ class FrequencyDomain(object):
         else:
             return
         
-        data = data[data['frequency'] >= min_freq]
+      #  data = data[data['frequency'] >= min_freq]
         mval = np.full(len(measures), np.nan)
         for i, m in enumerate(measures):
             
@@ -302,5 +302,7 @@ class FrequencyDomain(object):
                 mval[i] = get_wfm(data, minf = min_freq)
             elif m == 'WFD':
                 mval[i] = get_wfd(data, minf = min_freq)
+            elif m == 'FSTEPS':
+                mval[i] = get_fsteps(data)
                 
         return mval 
