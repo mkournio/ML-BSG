@@ -63,16 +63,16 @@ class TimeDomain(object):
                     
                     for m, v in zip(self.measures,values):
                         
-                        if m == 'MSE':                            
+                        if m == 'MSE0':                            
                             mse = self.lc_mse(hdu)
                             for im, vm in enumerate(mse):
                                 hdu.header[f'MSE{im}'] = vm
-                        if m == 'EMSE':
+                        if m == 'EMSE0':
                             hdu_mod = get_hdu_from_keys(ff[1:], SECTOR = hdu.header['SECTOR'], HDUTYPE = 'FREQUENCIES', BINSIZE = str(bin_size_d))[0]
                             emse = self.lc_mse(hdu, f_mod = hdu_mod)
                             for im, vm in enumerate(emse):
                                 hdu.header[f'EMSE{im}'] = vm
-                        if m not in ['MSE','EMSE']:
+                        if 'MSE' not in m :
                             if np.isnan(v):
                                 v = None
                             hdu.header[m] = v
@@ -193,14 +193,14 @@ class TimeDomain(object):
         
         if f_mod == None:
             
-            return get_mse(lc.flux, time=lc.time)
+            return get_mse(lc.flux, time=lc.time.value)        
         
         else:
             
             model = fourier_series(lc.time.value, params = f_mod)            
             lc.flux = lc.flux - model.flux
             
-            return get_mse(lc.flux, time=lc.time)
+            return get_mse(lc.flux, time=lc.time.value)
     
 class FrequencyDomain(object):
     
@@ -290,7 +290,7 @@ class FrequencyDomain(object):
         else:
             return
         
-      #  data = data[data['frequency'] >= min_freq]
+        data = data[data['frequency'] >= min_freq]
         mval = np.full(len(measures), np.nan)
         for i, m in enumerate(measures):
             

@@ -38,6 +38,8 @@ from sklearn.metrics import (
     mean_absolute_error
 )
 
+import matplotlib.ticker as ticker
+
 import umap
 from sklearn.cluster import AgglomerativeClustering, HDBSCAN
 from scipy.cluster.hierarchy import linkage, dendrogram
@@ -177,9 +179,10 @@ class Features:
         for c in log_convert :
             if c in self.df.columns:
                 if c in ['W0','R0']:
-                    self.df[c] = np.log10(1e+7 * self.df[c] + 1)
+                    self.df[c] = np.log10(1e+6 * self.df[c] + 1)
                 else:
                     self.df[c] = np.log10(self.df[c])
+                 #   if c=='R0': print(self.df[c])
                     
         if 'R0' in self.df.columns:
             nan_mask = self.df['R0'] < 0.8
@@ -188,7 +191,6 @@ class Features:
                 self.df['GAMMA'][nan_mask] = np.nan
             except:
                 pass
-            
        # print(self[['STAR','SpC','Tmag']])                
                 
         if 'save_output' in kwargs:
@@ -249,12 +251,22 @@ class Features:
         ax = sns.pairplot(loc_df,
                           hue = hue,
                           vars=[st(s) for s in plot_cols],
+                          diag_kind='kde',
+                          diag_kws={'common_norm': True},
                           corner = corner,
-                          palette= ['b','g','r'], 
-                          markers=['s', '^', 'o'], 
-                          **kwargs) 
+                          palette= ['b','r'], 
+                          markers=['s', 'o'], 
+                          ) 
         ax._legend.set_title("Class")
-        sns.move_legend(ax, loc='center', bbox_to_anchor=(.70, .70), frameon=True)
+        for a in ax.axes.flatten():
+            try:
+                a.yaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.1f}"))
+            except:
+                pass
+        sns.move_legend(ax, loc='center', bbox_to_anchor=(.55, .80), frameon=True)
+        
+        if 'save_output' in kwargs:
+            ax.savefig(kwargs['save_output'], format = 'pdf', dpi=300)            
         
         return ax  
     

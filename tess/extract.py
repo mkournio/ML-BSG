@@ -106,18 +106,12 @@ def get_metadata_from_tpf(tpf):
         meta['SECTOR'] = tpf.hdu[0].header['SECTOR']
         meta['CAMERA'] = tpf.hdu[0].header['CAMERA']
         meta['CCD'] = tpf.hdu[0].header['CCD']
-        meta['BJDREFI'] = tpf.hdu[1].header['BJDREFI']
+        meta['BJDREFI'] = tpf.hdu[0].header['BJDREFI']
         meta['FFICDN'] = tpf.hdu[1].header['TIMEDEL']
     except:
         pass
     
     return meta
-
-
-
-
-
-
 
 class CBVs:
         
@@ -294,7 +288,9 @@ class CBVs:
                     repeat = False
                     with time_limit(time_out):
                       #  start = time.time()
-                        lc_cbv = CBVCorrector(lc,cbv_dir=path_to_cbv_files,interpolate_cbvs = True).correct(
+                        lc_cbv = CBVCorrector(lc,
+                                              cbv_dir=path_to_cbv_files,
+                                              interpolate_cbvs = True).correct(
                             cbv_type = cbv_type, cbv_indices = cbv_indices,
                             alpha_bounds = alpha_bounds)
                        # print(f'Time spent: {time.time()-start}')
@@ -493,7 +489,7 @@ class Extract(GridTemplate):
             pipeline = 'unknown'
              
         lc0 = lk.TessLightCurveFile(path_to_input_file,flux_column="sap_flux").remove_outliers()
-        lc0 = lc0[lc0.quality==0]
+        lc0 = lc0[lc0.quality == 0]
         lc = lc0.copy()
         
         if 'gaps' in kwargs:
@@ -705,25 +701,34 @@ class Extract(GridTemplate):
     def from_tesscut(
             filename,   
             mask = None,
-            thres_ape = 0.2,
+            thres_ape = 0.3,
             thres_bkg = 1e-4,
+            iter_bdl = 1,
             pca = 2,
             lc_bin = None,
             lc_fit_deg = 2,
-            gaia_overlay = False,  
+            gaia_overlay = False,
+            gaia_source = None,
             save_output = False,
             **kwargs): 
         
         tpf = lk.TessTargetPixelFile(filename)
+        G = Gaia(tpf,gaia_source=gaia_source,cat='Gaia3')        
         
         if mask == None:
-            mask = getmask(tpf,thres=thres_ape)        
-        if type(thres_bkg) == float:            
-            bkg_mask = ~tpf.create_threshold_mask(thres_bkg, reference_pixel=None)
+            mask = getmask(tpf,
+                           thres=thres_ape,
+                           star_row = G.star_row, 
+                           star_col = G.star_col, **kwargs)
+        if isinstance(thres_bkg,float): 
+            source_like = tpf.create_threshold_mask(thres_bkg, reference_pixel=None)
+            if isinstance(iter_bdl,int) and iter_bdl > 0:
+                source_like = binary_dilation(source_like,iterations=iter_bdl)
+            bkg_mask = ~source_like            
         elif thres_bkg.startswith('q'):
             bkg_mask = percentile_mask(tpf, float(thres_bkg[1:]))        
             
-        fig, ax = plt.subplots(2,2,figsize=(16,10))
+        fig, ax = plt.subplots(2,2,figsize=(16,10,))        
         ax = ax.flatten() 
         
         ## PLOT 1 - TPF            
@@ -731,43 +736,56 @@ class Extract(GridTemplate):
                  mask_color='#FD110D', scale='sqrt')
         ax[0].set_title(filename,size=12)
         plot_bkg_aperture(ax[0],tpf,bkg_mask)
-        if gaia_overlay:
-            G = Gaia(tpf,cat='Gaia3')
+        if gaia_overlay:            
             G.plot(ax[0])                            
         ax[0].text(0.05,0.90,'%s' % thres_ape,color='c',size=12,transform=ax[0].transAxes)
         ax[0].set_xlim(tpf.column-0.5,tpf.column+tpf.shape[2]-0.5)
-        ax[0].set_ylim(tpf.row-0.5,tpf.row+tpf.shape[1]-0.5)
+        ax[0].set_ylim(tpf.row-0.5,tpf.row+tpf.shape[1]-0.5)                
         
-        ## PLOT 2 - BACKGROUND        
-        bkg_vec = tpf.flux[:, bkg_mask]
-        ax[1].plot(tpf.time.value,bkg_vec,'.')
-        ax[1].set_ylabel(r'F$_{bkg}$ [e$^{-}$/s]')
+        ## PLOT 2 - CENTROIDS
+        lc = tpf.to_lightcurve(aperture_mask=mask)
+        ax[1].plot(lc.time.value,lc.centroid_row,'b',label='centroid_row')
+        ax_twin = ax[1].twinx()
+        ax_twin.plot(lc.time.value,lc.centroid_col,'r',label='centroid_col')  
         ax[1].set_xlabel(f"Time - {tpf.header['BJDREFI']} [BTJD d]")
- 
-        ## PLOT 3 - LC CORRECTIONS
-        off = -0.03
-        for p in [1,2,3]:
-            lcc = lccor(tpf, mask, bkg_mask, pca_num = p, **kwargs)
-            ax[2].plot(lcc.time.value,
-                       off + (lcc.flux.value/np.nanmedian(lcc.flux.value)),'.',
-                       label=f'PCA {p}')
-            off += 0.03
-        ax[2].set_ylabel(r'F/F$_{med}$ + const.')
-        ax[2].set_xlabel(f"Time - {tpf.header['BJDREFI']} [BTJD d]")
-        ax[2].legend(loc=4)
+        ax[1].legend(loc=3)
+        ax_twin.legend(loc=2)
+
+        ## PLOT 2 - LC CORRECTIONS
+        #off = -0.03
+        #for p in [1,2,3,4]:
+        #    lcc, _, dm = lccor(tpf, mask, bkg_mask, pca_num = p, return_extra = True, **kwargs)
+        #    ax[1].plot(lcc.time.value,
+        #               off + (lcc.flux.value/np.nanmedian(lcc.flux.value)),'.',
+        #               label=f'PCA {p}')
+        #    off += 0.03        
+        #ax[1].set_ylabel(r'F/F$_{med}$ + const.')
+        #ax[1].set_xlabel(f"Time - {tpf.header['BJDREFI']} [BTJD d]")
+        #ax[1].legend(loc=4)
         
-        ## PLOT 4 - FINAL LC [mag]          
-        lcc = lccor(tpf, mask, bkg_mask, pca_num = pca, **kwargs)
+        ## PLOT 3 - PCA
+        lcc, rc, dm = lccor(tpf, mask, bkg_mask, pca_num = pca, return_extra = True, **kwargs)
+        #rc.diagnose()
+        for i in range(pca):
+            y = dm.values[:, i]
+            y = (y - np.nanmedian(y)) / np.nanstd(y)
+            ax[2].plot(lcc.time.value, y + 4*i, lw=1, label=f"PCA {i+1}" )
+        ax[2].legend()
+        ax[2].set_xlabel(f"Time - {tpf.header['BJDREFI']} [BTJD d]")
+        ax[2].set_ylabel("normalized PCA regressors")
+        
+        ## PLOT 4 - FINAL LC [mag]
         if isinstance(lc_bin,float):
             lcc = lcc.bin(time_bin_size = lc_bin)
         if isinstance(lc_fit_deg,int):
-            lcc = normalize(lcc,flux_key ="flux",deg = lc_fit_deg)[0]
+            lcc = normalize(lcc,deg = lc_fit_deg)[0]
         ax[3].plot(lcc.time.value,lcc.dmag.value,'k.',
                    label = f'PCA {pca}\nbin {lc_bin}\nndim {lc_fit_deg}')
         ax[3].set_ylabel(r'$\Delta$m [mag]')
         ax[3].set_xlabel(f"Time - {tpf.header['BJDREFI']} [BTJD d]")
         ax[3].legend(loc=3)
-        ax[3].invert_yaxis()
+        ax[3].invert_yaxis()        
+        ax[3].sharex(ax[1])
         
         if save_output:
             meta = get_metadata_from_tpf(tpf)

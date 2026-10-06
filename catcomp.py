@@ -35,30 +35,48 @@ cm.sort(['RA'])
 #LOC = [('MW' in x) or ('LMC' in x) or ('SMC' in x) for x in cm['GAL']]
 #cm = cm[LOC]
 
-#### FILTER FOR PLATO
+#### FILTER FOR CASLEO 2026A PROPOSAL
 LOC = [('MW' in x) for x in cm['GAL']]
 cm = cm[LOC]
+CASLEO = (100<cm['RA']) & \
+         (cm['RA']<320) & \
+         (cm['DEC']<0) & \
+         (cm['BPmag']<11) & (cm['Gmag']<11)
+cm = cm[CASLEO]
+ra_c,dec_c = np.genfromtxt('casleo27_irr.csv',unpack=True,usecols=(0,1),delimiter=',',comments='#')
+mask = [float('%.4f'% x) in ra_c for x in cm['RA']] 
+cm = cm[mask]
+cm['BPmag'].format = "{:.2f}"; cm['Gmag'].format = "{:.2f}"
 
-plato_center = SkyCoord(ra=95.3104 * u.deg, dec=-47.8869 * u.deg, frame='icrs')
-bsg_coords=SkyCoord(ra=cm['RA'],dec=cm['DEC'],unit=(u.deg,u.deg), frame='icrs')
-bsg_sep = plato_center.separation(bsg_coords).deg
-plato = bsg_sep < 24.5
-cm = cm[plato]
+#print(cm['RA','DEC','SpC','STAR'].pprint(max_lines=-1,max_width=-1))
 
-cols = ['STAR','RA','DEC','SpC',
-        'BPmag','Gmag','RPmag','e_BPmag','e_Gmag','e_RPmag','RUWE',
-        'GDIST','e_GDIST','E_GDIST','MG','MJ','MK']
+print(cm['STAR','RA','DEC','SpC','BPmag','Gmag'].pprint(align='<',max_lines=-1,max_width=-1))
+#Visualize(data=cm, plot_name='casleo27_eb', plot_key='dmag', rows_page=7, cols_page=1,output_format='png').lightcurves(stitched=True)
 
-cm = cm[(cm['MK']<-2.5)]
+#print(cm['RA','DEC','SpC','STAR'].pprint(max_lines=-1,max_width=-1))
+#cm[['RA','DEC']].write('casleo.csv', format='ascii', delimiter=',', overwrite=True)
+
+#####################################
 
 
-cm.sort(['SpC'])
+#### FILTER FOR PLATO
+#LOC = [('MW' in x) for x in cm['GAL']]
+#cm = cm[LOC]
 
-print(cm['STAR','SpC'])
-Visualize(data=cm, plot_name='plato_bsgs_x', plot_key='dmag', rows_page=7, cols_page=1,join_pages=False, output_format='png').lightcurves(stitched=True, bin_size = '10m')
+#plato_center = SkyCoord(ra=95.3104 * u.deg, dec=-47.8869 * u.deg, frame='icrs')
+#bsg_coords=SkyCoord(ra=cm['RA'],dec=cm['DEC'],unit=(u.deg,u.deg), frame='icrs')
+#bsg_sep = plato_center.separation(bsg_coords).deg
+#plato = bsg_sep < 24.5
+#cm = cm[plato]
+
+#cols = ['STAR','RA','DEC','SpC',
+#        'BPmag','Gmag','RPmag','e_BPmag','e_Gmag','e_RPmag','RUWE',
+#        'GDIST','e_GDIST','E_GDIST','MG','MJ','MK']
+#
+#cm = cm[(cm['MK']<-2.5)]
+#Visualize(data=cm, plot_name='plato_bsgs_x', plot_key='dmag', rows_page=7, cols_page=1,join_pages=False, output_format='png').lightcurves(stitched=True, bin_size = '10m')
 #cm[cols].write('plato_bsg.csv', format='ascii', delimiter=',', overwrite=True)
-
-#####################
+#####################################
 
 
 #print(cm['STAR','SpC','GAL','RA','DEC','Gmag',].pprint(max_lines=-1,max_width=-1))
@@ -82,19 +100,7 @@ cm = cm[r:r+1]
 #mast_query(cm, download_dir='data/', product = "Lightcurve")
 
 
-#### FILTER FOR CASLEO 2026A PROPOSAL
-#LOC = [('MW' in x) for x in cm['GAL']]
-#cm = cm[LOC]
-#CASLEO = (100<cm['RA']) & \
-#         (cm['RA']<300) & \
-#         (cm['DEC']<0) & \
-#         (cm['BPmag']<11) & (cm['Gmag']<11)
-#cm = cm[CASLEO]
-#ra_c,dec_c = np.genfromtxt('casleo_pv',unpack=True,usecols=(0,1),comments='#')
-#mask = [float('%.4f'% x) in ra_c for x in cm['RA']] 
-#cm = cm[mask]
-#####################################
-#print(cm['RA','DEC','STAR'].pprint(max_lines=-1,max_width=-1))
+
  
 
 #print(cm.columns)

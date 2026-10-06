@@ -226,7 +226,7 @@ def plot_ls_single(ax,
     if ax is None:
      _, ax = plt.subplots()        
 
-    ax.plot(freq,ampl_ini,LC_COLOR[c_class],lw=2)
+    ax.plot(freq,ampl_ini,LS_COLOR[c_class],lw=2)    
     ax.plot(freq,ampl_end,'0.6')
     if isinstance(model, fits.BinTableHDU):
         hdr = model.header
@@ -321,9 +321,9 @@ def add_plot_features(ax,mode = 'flux',upper_left='',lower_left='',lower_right='
         for ax_d in ax:
                      ax_d.invert_yaxis()            
             
-    ax[0].text(0.05,0.85,upper_left,color='r',fontsize=SIZE_FONT_SUB,transform=ax[0].transAxes)
-    ax[0].text(0.05,0.05,lower_left,color='b',fontsize=SIZE_FONT_SUB,transform=ax[0].transAxes)
-    ax[-1].text(0.6,0.05,lower_right,color='b',fontsize=SIZE_FONT_SUB,transform=ax[-1].transAxes)
+    ax[0].text(0.05,0.85,upper_left,color='k',fontsize=SIZE_FONT_SUB,transform=ax[0].transAxes)
+    ax[0].text(0.05,0.05,lower_left,color='k',fontsize=SIZE_FONT_SUB,transform=ax[0].transAxes)
+    ax[-1].text(0.6,0.05,lower_right,color='k',fontsize=SIZE_FONT_SUB,transform=ax[-1].transAxes)
     ax[-1].text(0.6,0.85,upper_right,color='k',fontsize=SIZE_FONT_SUB,transform=ax[-1].transAxes)  
     
     if mode == 'nflux':

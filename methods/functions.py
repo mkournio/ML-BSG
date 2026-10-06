@@ -15,14 +15,15 @@ from contextlib import contextmanager
 from astropy.units import Quantity
 from scipy.interpolate import interp1d
 from scipy.signal import savgol_filter
+from numpy.lib.stride_tricks import sliding_window_view
+from scipy.spatial import cKDTree
 
 class Gaia(object):
 
-    def __init__(self,tpf,cat='Gaia3'):
+    def __init__(self, tpf, gaia_source = None, cat='Gaia3'):
         
         self.tpf = tpf
-        self.ra = tpf.ra
-        self.dec = tpf.dec
+        self.gaia_source = gaia_source
         if cat=='Gaia3' :
             self.cat = 'I/355/gaiadr3'
         elif cat=='Gaia2' :
@@ -40,7 +41,7 @@ class Gaia(object):
 
         RA_pix,DE_pix = self.tpf.wcs.all_world2pix(DS3.RA_ICRS,DS3.DE_ICRS,0.01)
         RA_pix += self.tpf.column ; DE_pix += self.tpf.row
-        RA_pix += 0.5 ; DE_pix += 0.5
+       # RA_pix += 0.5 ; DE_pix += 0.5
         
         cond_box = (RA_pix>self.tpf.column) & (RA_pix<self.tpf.column+self.tpf.shape[2]) & \
                    (DE_pix>self.tpf.row) & (DE_pix<self.tpf.row+self.tpf.shape[1])
@@ -54,13 +55,12 @@ class Gaia(object):
         
         self.gaia_ind = None
         try:
-            GA_query = Vizier(catalog='I/355/gaiadr3').query_region(SkyCoord(ra=self.ra,dec=self.dec,unit=(u.deg,u.deg),
-                                                                             frame='icrs'), radius = 10 * u.arcsec)[0]
-            GA_star =  GA_query['Source'][0]
-            self.gaia_ind = np.where(GaIDs == GA_star)
-            self.star_row = int(DE_pix[self.gaia_ind] - self.tpf.row)
-            self.star_col = int(RA_pix[self.gaia_ind] - self.tpf.column)
-            self.RPdiff =  RP - np.ma.min(GA_query['RPmag'])
+           # GA_query = Vizier(catalog='I/355/gaiadr3').query_region(SkyCoord(ra=self.tpf.ra,dec=self.tpf.dec,unit=(u.deg,u.deg),
+           #                                                                  frame='icrs'), radius = 10 * u.arcsec)[0]
+            self.gaia_ind = np.where(GaIDs == self.gaia_source)
+            self.star_row = round((DE_pix[self.gaia_ind] - self.tpf.row)[0])
+            self.star_col = round((RA_pix[self.gaia_ind] - self.tpf.column)[0])
+            self.RPdiff =  RP - RP[self.gaia_ind]
         except:
             print('No Gaia counterparts retrieved')
             self.star_row = None
@@ -72,7 +72,9 @@ class Gaia(object):
     def _query(self):
 
         DS3 = Vizier(catalog=self.cat,columns=['*','+_r']); DS3.ROW_LIMIT = -1
-        DS3_query = DS3.query_region(SkyCoord(ra=self.tpf.ra,dec=self.tpf.dec,unit=(u.deg,u.deg), frame='icrs'),
+        DS3_query = DS3.query_region(SkyCoord(ra=self.tpf.ra,
+                                              dec=self.tpf.dec,
+                                              unit=(u.deg,u.deg), frame='icrs'),
                                      radius = max(self.tpf.shape[1:]) * TESS_pix_size * u.arcsec)
         DS3 = DS3_query[0].to_pandas()
 
@@ -111,7 +113,7 @@ class Gaia(object):
         
         if self.gaia_ind != None:
             ax.scatter(self.RA_pix[self.gaia_ind], self.DE_pix[self.gaia_ind], 
-                       s=GAIA_UPMARK, marker='x', color='c', linewidths=2)
+                       s=GAIA_UPMARK, marker='x', color='k', linewidths=3)
             
         return ax
 
@@ -153,7 +155,12 @@ def get_gaia(tic,
     
     return result[0]
 
-def getmask(tpf, star_row = None, star_col = None, thres = 0.1):
+def getmask(tpf, 
+            star_row = None, 
+            star_col = None, 
+            thres = 0.1,
+            thres_rad = 99,
+            **kwargs):
     
     if star_row == None:
         star_row = int(0.5 * tpf.shape[1])
@@ -169,58 +176,58 @@ def getmask(tpf, star_row = None, star_col = None, thres = 0.1):
     rad = 1
     mask_size = len(mask)
     
-    for c in np.arange(star_col,mask_size,1):
-        
-        col_break = -1
-        
-        for r in np.arange(star_row,-1,-1):
-            
+    ucol = min(star_col+thres_rad,mask_size)   
+    lcol = max(star_col-thres_rad,-1)
+    urow = min(star_row+thres_rad,mask_size)
+    lrow = max(star_row-thres_rad,-1)
+    
+    for c in np.arange(star_col,ucol,1):
+
+        col_break = -1        
+        for r in np.arange(star_row,lrow,-1):
+
             max_flx = -1            
             if flux_matr[r][c] > thres * cen_flux:                
                 mask[r][c] = True
                 max_flx = 1
-                col_break = 1
-                
+                col_break = 1                
             if max_flx < 0.:
                 break
             
-        for r in np.arange(star_row,mask_size,1):
-            
+        for r in np.arange(star_row,urow,1):
+           
             max_flx = -1            
             if flux_matr[r][c] > thres * cen_flux:
                 mask[r][c] = True
                 max_flx = 1
-                col_break = 1
-                
+                col_break = 1                
             if max_flx < 0.: 
                 break
             
         if col_break < 0.: 
             break
         
-    for c in np.arange(star_col,-1,-1) :
-        
+    for c in np.arange(star_col,lcol,-1) :
+
         col_break = -1
         
-        for r in np.arange(star_row,-1,-1):
-            
+        for r in np.arange(star_row,lrow,-1):
+
             max_flx = -1
             if flux_matr[r][c] > thres * cen_flux:
                 mask[r][c] = True
                 max_flx = 1
-                col_break = 1
-                
+                col_break = 1                
             if max_flx < 0.: 
                 break
             
-        for r in np.arange(star_row,mask_size,1):
+        for r in np.arange(star_row,urow,1):
             
             max_flx = -1
             if flux_matr[r][c] > thres * cen_flux:
                 mask[r][c] = True
                 max_flx = 1
-                col_break = 1
-                
+                col_break = 1                
             if max_flx < 0.: 
                 break
             
@@ -231,22 +238,31 @@ def getmask(tpf, star_row = None, star_col = None, thres = 0.1):
 
 def dmatr(matr, pca_num):
     
-    return DesignMatrix(matr,name='regressors').pca(pca_num).append_constant()
+    dm = DesignMatrix(matr,name='regressors').pca(pca_num)
+    
+    return dm.append_constant()
 
-def lccor(tpf, mask, bkg_mask, pca_num, **kwargs):    
+def lccor(tpf, mask, bkg_mask, pca_num, return_extra = False, **kwargs):    
    
     lc = tpf.to_lightcurve(aperture_mask=mask)
-    flux_mask = (lc.flux_err > 0) & (~np.isin(lc.quality,[1,4,16,32,1024,2048,16384]))
-    lc = lc[flux_mask]
     
+    bad_bits = 1 | 4 | 16 | 32 | 1024 | 2048 | 16384
+    flux_mask = ((lc.flux_err > 0) & ((lc.quality & bad_bits) == 0))
+    lc = lc[flux_mask]  
+   
     rgr = tpf.flux[flux_mask][:, bkg_mask]
-    dm = dmatr(rgr,pca_num)
+    dm = dmatr(rgr,pca_num)    
     
-    lcc = RegressionCorrector(lc).correct(dm)
+    rc = RegressionCorrector(lc)
+    lcc = rc.correct(dm)
     
     if 'gaps' in kwargs:
         gaps = kwargs['gaps']
         lcc.flux = set_nans(lcc.time.value, lcc.flux.value, gaps)
+        
+    if return_extra:
+        
+        return lcc, rc, dm
 
     return lcc
     
@@ -380,13 +396,13 @@ def remove_slow_lcs(files):
             
     return files
 
-def normalize(lc, deg = 2, coeff = None):    
+def normalize(lc, deg = 2, coeff = None, **kwargs):    
   
     if isinstance(lc, lk.LightCurve):
         time = lc.time.value
         flux = lc.flux.value
         try:
-            flux_err = np.zeros(len(flux))#lc.flux_err.value
+            flux_err = lc.flux_err.value
         except:
             flux_err = np.zeros(len(flux))
             
@@ -525,23 +541,139 @@ def get_kurt(flux):
     
     return stats.kurtosis(flux)
 
-def get_mse(flux, time = [], m = 2, tau = 12, tol = 0.3, break_d = 0.1, ax = None):
-    
+
+def _coarse_grain(y, scale):
+    n = len(y) // scale
+    if n < 1:
+        return np.array([])
+
+    y = y[:n * scale]
+    return y.reshape(n, scale).mean(axis=1)
+
+def _sampen_counts(y, m, r):
+    """
+    Return A and B match counts for SampEn.
+
+    B: matches of length m templates
+    A: matches of length m+1 templates
+    """
+
+    if len(y) < m + 2:
+        return 0, 0
+
+    Xm = sliding_window_view(y, m)
+    Xm1 = sliding_window_view(y, m + 1)
+
+    B = len(cKDTree(Xm).query_pairs(r, p=np.inf))
+    A = len(cKDTree(Xm1).query_pairs(r, p=np.inf))
+
+    return A, B
+
+
+def get_mse(flux, time=None, m=2, tau=12, tol=0.3,
+            break_d=0.1, ax=None):
+
     flux = np.array(flux)
-    
-    if len(time) > 0:
-        mask = np.isfinite(flux)
+
+    if time is not None:
+        time = np.array(time)
+
+        mask = np.isfinite(time) & np.isfinite(flux)
         time = time[mask]
         flux = flux[mask]
-        
-        dt = time[1:] - time[0:-1]
+
+        order = np.argsort(time)
+        time = time[order]
+        flux = flux[order]
+
+        dt = time[1:] - time[:-1]
         cut = np.where(dt > break_d)[0] + 1
+
         low = np.append([0], cut)
-        high = np.append(cut, len(time))
+        high = np.append(cut, len(flux))
+
     else:
+        mask = np.isfinite(flux)
+        flux = flux[mask]
+
         low = [0]
         high = [len(flux)]
 
+    tau = int(len(flux) / 120.)
+
+    if tau < 5:
+        return np.full(3, np.nan)
+
+    r = tol * np.nanstd(flux)
+
+    msx = []
+    msy = []
+
+    for scale in range(1, tau + 1):
+
+        A_tot = 0
+        B_tot = 0
+
+        for l, h in zip(low, high):
+
+            flux_seg = flux[l:h]
+
+            # This is where gap crossing is avoided:
+            # each continuous segment is coarse-grained separately.
+            cg = _coarse_grain(flux_seg, scale)
+
+            A, B = _sampen_counts(cg, m=m, r=r)
+
+            A_tot += A
+            B_tot += B
+
+        if A_tot > 0 and B_tot > 0:
+            se = -np.log(A_tot / B_tot)
+        else:
+            se = np.nan
+
+        msx.append(scale)
+        msy.append(se)
+
+    msx = np.array(msx)
+    msy = np.array(msy)
+
+    idx = np.isfinite(msx) & np.isfinite(msy)
+    msx = msx[idx]
+    msy = msy[idx]
+
+    if len(msy) < 5:
+        return np.full(3, np.nan)
+
+    mse_power = np.nanmean(msy**2)
+    mse_slope = (msy[-1] - msy[0]) / (msx[-1] - msx[0])
+
+    if ax is not None:
+        print(mse_power, mse_slope, tau)
+        ax.plot(msx, msy, 'o')
+        z2 = np.polyfit(msx, msy, deg=2)
+        f2 = np.poly1d(z2)
+        ax.plot(msx, f2(msx))
+
+    return np.array([mse_power, mse_slope, tau])
+
+'''def get_mse(flux, time = [], m = 2, tau = 12, tol = 0.3, break_d = 0.1, ax = None):
+    
+    flux = np.array(flux)
+    
+  #  if len(time) > 0:
+  #      mask = np.isfinite(flux)
+  #      time = time[mask]
+  #      flux = flux[mask]
+        
+  #      dt = time[1:] - time[0:-1]
+  #      cut = np.where(dt > break_d)[0] + 1
+  #      low = np.append([0], cut)
+  #      high = np.append(cut, len(time))
+  #  else:
+   #     low = [0]
+   #     high = [len(flux)]
+    low = [0]; high = [len(flux)]
     seg_stat = []
     for l, h in zip(low, high):
 
@@ -576,10 +708,10 @@ def get_mse(flux, time = [], m = 2, tau = 12, tol = 0.3, break_d = 0.1, ax = Non
             f2 = np.poly1d(z2) 
             ax.plot(msx,f2(msx))            
             
-        seg_stat.append([np.nanmean(msy**2)/tau,(msy[-1]-msy[0])/tau, tau])
+        seg_stat.append([np.nanmean(msy**2),(msy[-1]-msy[0])/tau, tau])
         
     return np.nanmedian(seg_stat, axis=0)
-   # return  np.nanmean(msy**2), (msy[-1]-msy[0]) / tau, z2[0]
+   # return  np.nanmean(msy**2), (msy[-1]-msy[0]) / tau, z2[0]'''
 
 def k_cross(flux, kappa = 5):
     

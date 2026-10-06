@@ -107,7 +107,7 @@ STY_LB = 	{
 		'TEFF' :  r'T$_{\rm eff}$ [K]', 'SpCt' : 'B(*)I/II', 'TESS_time' : r'Time $-$ 2457000 [BTJD d]','TESS_freq' : r'Frequency [d$^{-1}$]',
         'SLOGL' : r'log$_{10}(\mathcal{L}/\mathcal{L}_{\odot})$', 'LOGL' : r'log$_{10}$($L$/L$_{\odot})$',        
 		'MAD' : r'log$_{10}(MAD$)', 'MAD_RAW': r'log$_{10}(MAD_{0})$', 'STD': r'$\sigma$ [mag]', 'ZCROSS' : r'$D_{0}$', 'PSI': r'log$_{10}(\psi^2)$', 'IQR': r'IQR',
-		'ETA' : r'$\eta$', 'SKW': r'skw', 'A_V' : r'$A_{V}$', 'EDD' : r'$\Gamma_{e}$', 'KRT': r'kurt', 'ZCR': r'Zcr',
+		'ETA' : r'log$_{10}(\eta_{inv}$)', 'SKW': r'skw', 'A_V' : r'$A_{V}$', 'EDD' : r'$\Gamma_{e}$', 'KRT': r'kurt', 'ZCR': r'Zcr',
         'EMSE1': r'$m_{E}$', 'EMSE0': r'log$_{10}(\bar{E}^2)$',
         'WFM': r'$\bar{f}_{w}$', 'WFD': r'$\sigma_{f,w}$',
         'HK': r'$H-K_{s}$', 'Q_JHK': r'$Q_{JHK}$', 'JH': r'$J-H$',
@@ -120,10 +120,16 @@ STY_LB = 	{
 		'INDFF' : r'#$f_{i}$','INDFFS' : r'#$f_{i,sec}$',
         'STAR': 'Star', 'SpC': 'Class'}
 
+LS_COLOR = 	{    
+        'B[e]SG' : 'c',
+        'LBV' : 'hotpink',
+		'any': 'k'
+		}
+
 LC_COLOR = 	{    
         'B[e]SG' : 'c',
         'LBV' : 'pink',
-        'model' : 'r',
+        'model' : 'lime',
         'binned': 'k',
 		'tesscut'	 : 'r',
         'fit': 'r',
@@ -188,10 +194,13 @@ STAR_IDS = {
     }
 
 cornerplot_kwargs={
-    "axes.labelsize" : 14, 
-    "legend.title_fontsize": 14,
+    "axes.labelsize" : 22, 
+    'xtick.labelsize': 16,
+    'ytick.labelsize': 18,
+    'lines.markersize': 11,
+    "legend.title_fontsize": 16,
     "legend.markerscale": 1.2,
-    "legend.fontsize" : 12
+    "legend.fontsize" : 15
     }
 
 pairplot_kwargs={

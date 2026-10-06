@@ -101,18 +101,18 @@ PGs.periodograms(snr_file = 'ls_snr',
 
 # PERIODOGRAMS
 
-LS = Visualize(data=cm,
+'''LS = Visualize(data=cm,
                 plot_name='ls', 
                 plot_key='ls',
                 figsize = (25,30),
                 rows_page=8, 
                 cols_page=3, 
-                output_format='pdf').periodograms(preview = 'preview_fig')
+                output_format='pdf').periodograms(preview = 'preview_fig')'''
 
 
 ############# METRICS
-time_metrics = ['MAD_RAW','MAD','ETA','EMSE0','EMSE1']
-freq_metrics = ['WFM','WFD','FSTEPS']
+time_metrics = ['EMSE0','EMSE1']# ['MAD_RAW','MAD','ETA','EMSE0','EMSE1']
+freq_metrics = ['WFM','WFD']
 rn_metrics = ['W0','R0','TAU','GAMMA']
 #tl_metrics = ['TLPW','TLLW','TLPS','TLLS']
 # RESETING - REMOVING
@@ -120,6 +120,7 @@ rn_metrics = ['W0','R0','TAU','GAMMA']
 #fl = FitsList(cm); fl.remove_hdu(hdutypes=['FREQUENCIES','PERIODOGRAMS'])
 
 # TIME DOMAIN
+#fl = FitsList(cm); fl.remove_header_keys(keys = ['EMSE0','EMSE1','EMSE2'])
 #td = TimeDomain(data = cm, measures = time_metrics).calculate()
 # FREQUENCY DOMAIN
 #fl = FitsList(cm); fl.remove_header_keys(keys = freq_metrics)
@@ -144,13 +145,13 @@ feats.get_from_sectors(
     freq_keys = freq_metrics,
     rn_keys = rn_metrics,
     calc_keys = ['JH','HK','KW4','W14','W24','W34','Q_JHK'],
-    log_convert = ['IQR','ETA','W0','R0','PSI','MAD','MAD_RAW','TOP','MSE0','EMSE0'],
+    log_convert = ['ETA','W0','R0','PSI','MAD','MAD_RAW'],
     save_output = None)
 feats.merge_cand()
 
 ### CORNER PLOTS
-#feats.corner_plot(plot_cols = time_metrics, hue = 'SpC',outlier_sigma=5.)
-#feats.corner_plot(plot_cols = freq_metrics+rn_metrics, hue = 'SpC',outlier_sigma=5.)
+feats.corner_plot(plot_cols = time_metrics, hue = 'SpC',outlier_sigma=5.)
+#feats.corner_plot(plot_cols = freq_metrics+rn_metrics, hue = 'SpC',outlier_sigma=5.,save_output='cp_fd_test.pdf')
 
 var_cols = time_metrics + rn_metrics + freq_metrics
 agg_cols = var_cols + ['Tmag','CROWDSAP','Q_JHK','HK','JH','Jmag','Hmag','Kmag']
@@ -162,13 +163,14 @@ ml_kwargs = {
    
 #print(feats.df[['STAR','SECTOR'] + freq_metrics])
 feats.aggregate(group_by = ['STAR','SpC','TIC','RA','DEC'], **ml_kwargs)
+feats.corner_plot(plot_cols = time_metrics, hue = 'SpC',outlier_sigma=5.)
 
 # SAMPLE PRINTING
 #TT = TexTab()
 #TT.TabSample(feats.df[['STAR','RA','DEC','SpC','Tmag','Q_JHK','TIC','CROWDSAP']].sort_values('RA'))
 
 #### PAIR PLOTS
-#feats.pair_plot(['EMSE1','Tmag'], star_labels = True)
+#feats.pair_plot(['R0','Tmag'], star_labels = True)
 #feats.pair_plot(['EMSE1','CROWDSAP'], star_labels = True)
 #feats.pair_plot(['EMSE1','W0'], star_labels = True)
 
@@ -179,8 +181,8 @@ ax[0].set_xticklabels([]); ax[0].set_xlabel('')
 fig.subplots_adjust(hspace=0.02); fig.tight_layout()'''
 
 
-ml_kwargs['var_cols'].remove('W0')
-ml_kwargs['var_cols'].remove('FSTEPS')
+#ml_kwargs['var_cols'].remove('W0')
+#ml_kwargs['var_cols'].remove('FSTEPS')
 #ml_kwargs['var_cols'].remove('R0')
 
 #### CLASSIFIERS - REGRESSORS
@@ -199,7 +201,7 @@ ml_kwargs['var_cols'].remove('FSTEPS')
 '''fig, ax = plt.subplots(1, 2, figsize = (18,10)); ax= ax.flatten()
 feats.umap_plot(ax=ax[0], umap_n = 6, random_state = 42, **ml_kwargs)
 feats.umap_plot(ax=ax[1], umap_n = 15, **ml_kwargs) 
-fig.tight_layout()'''#; fig.savefig('UMAP.eps', format = 'eps', dpi=150)
+fig.tight_layout()#; fig.savefig('UMAP.eps', format = 'eps', dpi=150)'''
 
 '''fig, ax = plt.subplots(1,3, figsize = (18,6)); ax= ax.flatten()
 feats.umap_plot(ax=ax[0], cbar_col = ['Tmag'], umap_n = 6, **ml_kwargs)

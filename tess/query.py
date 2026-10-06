@@ -9,7 +9,8 @@ import os
 def mast_query(table, 
                product = "Lightcurve", 
                download = True, 
-               download_dir='data/'):
+               download_dir='data/',
+               **kwargs):
 
      if not os.path.isdir(download_dir):
          os.mkdir(download_dir)
@@ -38,8 +39,16 @@ def mast_query(table,
                q = q[(q.author == 'SPOC') | (q.author == 'TESS-SPOC')]
                print(q)               
            except Exception as e:
-               print('Targetpixelfile: {}'.format(e))
-     
+               print('Targetpixelfile: {}'.format(e))               
+       
+       elif product == "tesscut":
+           cutout_size = kwargs.get('cutout_size',10)
+           try:
+               q = lk.search_tesscut(f"TIC {row['TIC']}")
+               q.download_all(download_dir='data/', cutout_size = cutout_size)
+           except Exception as e:
+               print('TESScut: {e}')  
+               
      return q
  
 def download_tpfs(table,

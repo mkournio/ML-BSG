@@ -62,6 +62,7 @@ class Visualize(GridTemplate):
             
         ltab = self.data.copy()
        # log_file = open("log_vis_ems", "w")
+        #log_file = open("log_casleo.csv", "w")
         
         for l in ltab:
             
@@ -75,6 +76,10 @@ class Visualize(GridTemplate):
             filename = [f for f in os.listdir(path_to_output_fits) if star in f]
             if len(filename) > 0:
                 
+                #FOR CHECKING WHICH STARS HAVE TESS LIGHTCURVES
+                #log_file.write('{:+.8f},{:+.8f}\n'.format(l['RA'],l['DEC']))
+                #continue
+                
                 print('LC plotting {} TIC {}'.format(star,tic))
                 
                 hdulist = fits.open(os.path.join(path_to_output_fits,filename[0]))
@@ -83,9 +88,14 @@ class Visualize(GridTemplate):
                 if 'custom_sect' in kwargs:
                     if star in kwargs['custom_sect']:
                         sectors = kwargs['custom_sect'][star]
-             
+                 
+                ## FOR PAST VERSION ONLY WITHOUT HDUTYPE HEADER KEU        
+                #hdu_raw = [get_hdu_from_keys(hdulist, SECTOR = s, BINNING = 'F')[0] for s in sectors]
+                #hdu_bin = [get_hdu_from_keys(hdulist, SECTOR = s, BINNING = 'T', BINSIZE = str(bin_size))[0] for s in sectors]
                 hdu_raw = [get_hdu_from_keys(hdulist, SECTOR = s, HDUTYPE = 'LIGHTCURVE', BINNING = 'F')[0] for s in sectors]
                 hdu_bin = [get_hdu_from_keys(hdulist, SECTOR = s, HDUTYPE = 'LIGHTCURVE', BINNING = 'T', BINSIZE = str(bin_size))[0] for s in sectors]
+                
+                crowdsap = hdu_bin[0].header['CROWDSAP']
                 if models:
                     hdu_mods = [get_hdu_from_keys(hdulist, SECTOR = s, HDUTYPE = 'FREQUENCIES', BINNING = 'T', BINSIZE = str(bin_size))[0] for s in sectors]
                     grouped_hdu_mods = group_consecutive_hdus(hdu_mods,sectors)
@@ -119,8 +129,11 @@ class Visualize(GridTemplate):
                             
                     add_plot_features(axes, mode = self.plot_key,
                                       upper_left='{} (TIC {})'.format(star,tic), 
-                                    #  upper_right='CROWD {:.2f}'.format(crowdsap),
-                                      lower_left=spc, y_min_max = minmax, vlines = vlines)
+                                      #upper_left=f'{star} ({l["RA"]:.4f} {l["DEC"]:.4f})', 
+                                     # upper_right='CROWD {:.2f}'.format(crowdsap),
+                                      lower_left=spc,
+                                      
+                                      y_min_max = minmax, vlines = vlines)
                     
                 else:
                      
@@ -165,7 +178,7 @@ class Visualize(GridTemplate):
              #   log_file.write('{:30s} {:+.8f} {:+.8f} {:10s} {} {}\n'.format(star,l['RA'],l['DEC'],spc,tic,get_filename(self.filename,self.output_format)))
  
         self.close_plot()
-     #   log_file.close()
+        #log_file.close()
         
         return
     
@@ -237,10 +250,3 @@ class Visualize(GridTemplate):
         self.close_plot()
         
         return
-                
-
-   
-    
-    
-    
-    
