@@ -59,8 +59,7 @@ class TimeDomain(object):
 
                 for hdu in hdus:           
                     
-                    values = self.td_lc(hdu,self.measures)
-                    
+                    values = self.td_lc(hdu,self.measures)                    
                     for m, v in zip(self.measures,values):
                         
                         if m == 'MSE0':                            
@@ -81,76 +80,8 @@ class TimeDomain(object):
                 
                 ff.close()
                 
-        return
-    
-    def header_combine(self, mode ='average', bin_size = 'raw'):
-        
-        if len(self.measures) == 0:
-            return
-        
-        if not mode in ['average','median']:
-            raise Exception('Set mode among average and median. Aborting..')
-            
-        if bin_size not in ['raw','10m','30m']:
-            raise Exception('Set bin_size among raw, 10m, 30m. Aborting..')
-            
-        if bin_size == '10m':
-            bin_size = 0.00694
-        elif bin_size == '30m':
-            bin_size = 0.02083
-        
-        print('Combining to primary headers the metrics: {}'.format(self.measures))
-        
-        stars = self.data['STAR']
-        tics = self.data['TIC']        
-        for star, tic in zip(stars,tics):
-            
-            filename = [f for f in os.listdir(path_to_output_fits) if star in f]
-            if len(filename) > 0 :
-                
-                ff = fits.open(os.path.join(path_to_output_fits,filename[0]))
-                sectors = get_sectors_from_hdulist(ff)
-                
-                if bin_size == 'raw':                    
-                    hdus = [get_hdu_from_keys(ff, SECTOR = s,  TTYPE2 = 'flux', BINNING = 'F')[0] for s in sectors]
-                else:
-                    hdus = [get_hdu_from_keys(ff, SECTOR = s,  TTYPE2 = 'flux', BINSIZE = str(bin_size))[0] for s in sectors]
-
-                s_values = []
-                crowdsap_v = []
-                
-                for hdu, sect in zip(hdus,sectors):
-                    
-                    sect_values = np.full(len(self.measures), np.nan)                    
-                   
-                    for i, m in enumerate(self.measures):                        
-                        if m in hdu.header and hdu.header[m] != 'None':
-                            sect_values[i] = hdu.header[m]  
-                        
-                    s_values.append(sect_values)
-                    crowdsap_v.append(hdu.header['CROWDSAP'])
-                        
-                if mode == 'average':
-                    c_values = np.nanmean(s_values,axis=0)
-                    c_values_err = np.nanstd(s_values,axis=0)
-                elif mode == 'median':
-                    c_values = np.nanmedian(s_values,axis=0)
-                    c_values_err = np.nanstd(s_values,axis=0)     
-                    
-                if isinstance(c_values,np.ndarray) :
-                    for m, v, e_v in zip(self.measures, c_values, c_values_err):
-                        if np.isnan(v): v = None; e_v=None
-                        ff[0].header[m] = (v, e_v)
-                    ff[0].header['SCOMBINE'] = mode
-                    ff[0].header['SBINSIZE'] = bin_size                   
-                    ff[0].header['MINCROWD'] = np.nanmin(crowdsap_v)
-                    ff[0].header['AVECROWD'] = np.nanmean(crowdsap_v)
-                    
-                ff.writeto(os.path.join(path_to_output_fits,filename[0]), overwrite=True)
-                ff.close()                                              
-                
-        return     
-           
+        return  
+         
     @staticmethod
     def td_lc(f, measures, flux_key = 'dmag'):
         

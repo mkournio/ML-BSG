@@ -2,6 +2,7 @@ import lightkurve as lk
 import numpy as np
 import os
 from constants.io import *
+from constants.paths import *
 from methods.functions import *
 from methods.plot import *
 from methods.tools import FitsObject, get_fits_name, get_lc_from_filename
@@ -17,6 +18,7 @@ from matplotlib import patches
 from lightkurve.correctors import CBVCorrector, load_tess_cbvs
 import datetime
 import traceback
+from scipy.ndimage import binary_dilation
 import time
 import re
 
@@ -366,10 +368,10 @@ class Extract(GridTemplate):
          if not os.path.exists(path_to_lcs): 
             os.makedirs(path_to_lcs)
             
-     if 'spoc_path' in kwargs:
-         path_to_spoc_files = kwargs['spoc_path']
-     if 'tess_spoc_path' in kwargs:
-         path_to_tess_spoc_files = kwargs['tess_spoc_path']
+    # if 'spoc_path' in kwargs:
+     #    path_to_spoc_files = kwargs['spoc_path']
+     #if 'tess_spoc_path' in kwargs:
+     #    path_to_tess_spoc_files = kwargs['tess_spoc_path']
  
      fSPOC = os.listdir(path_to_spoc_files)
      fTSPOC = os.listdir(path_to_tess_spoc_files)
@@ -556,7 +558,7 @@ class Extract(GridTemplate):
                 
         # Plot the lightcurves
         ax_lc = self.GridAx()
-        plot_lc_single(ax_lc, n_lc, flux_key = self.plot_key, lc_type = pipeline, m = '.')
+        plot_lc_single(ax_lc, n_lc, flux_key = self.plot_key, lc_type = 'raw', m = '.')
         if len(time_bin) > 0:
             plot_lc_single(ax_lc, binned_lcs[0], flux_key = self.plot_key, lc_type = 'binned', trend = True)
           
@@ -1026,8 +1028,10 @@ class Extract(GridTemplate):
                 if step > 0:
                     rel_change.append(abs(a0_old-popt_rn[0]-popt_rn[1])/a0_old)
                 a0_old =  popt_rn[0]  + popt_rn[1] 
-            
-            if red_noise and np.nanmean(rel_change[-3:]) < 0.1 :
+                
+            #if red_noise and np.nanmean(rel_change[-3:]) < 0.1 :
+            # The following addition of len() was added on 14/10/26 for GG Car to prevent converging too early    
+            if red_noise and len(rel_change)>2 and np.nanmean(rel_change[-3:]) < 0.1 :
                 #print(f'Noise model converged to step {step}/{nprew}')
                 sn_val = max(pg.power)/lorentz(pg.frequency_at_max_power.value,*popt_rn)
             else:

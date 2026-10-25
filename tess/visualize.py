@@ -95,7 +95,7 @@ class Visualize(GridTemplate):
                 hdu_raw = [get_hdu_from_keys(hdulist, SECTOR = s, HDUTYPE = 'LIGHTCURVE', BINNING = 'F')[0] for s in sectors]
                 hdu_bin = [get_hdu_from_keys(hdulist, SECTOR = s, HDUTYPE = 'LIGHTCURVE', BINNING = 'T', BINSIZE = str(bin_size))[0] for s in sectors]
                 
-                crowdsap = hdu_bin[0].header['CROWDSAP']
+                
                 if models:
                     hdu_mods = [get_hdu_from_keys(hdulist, SECTOR = s, HDUTYPE = 'FREQUENCIES', BINNING = 'T', BINSIZE = str(bin_size))[0] for s in sectors]
                     grouped_hdu_mods = group_consecutive_hdus(hdu_mods,sectors)
@@ -127,6 +127,7 @@ class Visualize(GridTemplate):
                         if obj == star:
                             vlines = dict_log[obj]
                             
+                    #crowdsap = hdu_bin[0].header['CROWDSAP']        
                     add_plot_features(axes, mode = self.plot_key,
                                       upper_left='{} (TIC {})'.format(star,tic), 
                                       #upper_left=f'{star} ({l["RA"]:.4f} {l["DEC"]:.4f})', 

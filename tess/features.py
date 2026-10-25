@@ -197,18 +197,12 @@ class Features:
             self.df.to_csv(kwargs['save_output'],index=False)            
       
         return self.df    
-    
-    def merge_cand(self):
-        
-        self.df['SpC'] = [x.replace('?','') for x in self.df['SpC'] ]
-        
-        return        
    
     def aggregate(self, 
                   agg_cols, 
-                  group_by,                  
-                  agg_type='median',
-                  split_cand = False,
+                  group_by,
+                  update_tab = True,
+                  agg_type='mean',
                   **kwargs):
         
         if agg_type == 'none':
@@ -221,16 +215,21 @@ class Features:
                 agg_cols_dict[c] = np.nanmedian
             elif agg_type == 'mean':
                 agg_cols_dict[c] = np.nanmean
+                                
+        agg_tab = self.df.groupby(group_by,as_index=False).agg(agg_cols_dict)        
+        agg_sizes = self.df.groupby(group_by,as_index=False).transform('size')
                 
-        self.df = self.df.groupby(group_by,as_index=False).agg(agg_cols_dict)
-
-        return self
-    
+        if update_tab :            
+            self.df = agg_tab
+            
+        return agg_tab, agg_sizes
+ 
     def corner_plot(self,
                   plot_cols,
                   hue,
                   corner = True,
                   outlier_sigma = 3.,
+                  merge_cand = False,
                   **kwargs):        
         
         if isinstance(outlier_sigma, (int,float)):            
@@ -247,12 +246,16 @@ class Features:
         rcols = {}
         for c in plot_cols:
             rcols[c] = st(c)
-        loc_df = self.df.rename(columns=rcols)        
+        loc_df = self.df.rename(columns=rcols)
+        
+        if merge_cand:
+            loc_df['SpC'] = [x.replace('?','') for x in loc_df['SpC']]
+            
         ax = sns.pairplot(loc_df,
                           hue = hue,
                           vars=[st(s) for s in plot_cols],
                           diag_kind='kde',
-                          diag_kws={'common_norm': True},
+                        #  diag_kws={'common_norm': True},
                           corner = corner,
                           palette= ['b','r'], 
                           markers=['s', 'o'], 
@@ -294,17 +297,83 @@ class Features:
             x = star.iloc[:,0].values
             y = star.iloc[:,1].values
             
-            ax.plot(x, y, CLASS_M[spt], c = CLASS_C[spt])
-            if star_labels:
-                ax.text(x+0.015,star.iloc[:,1]+0.01, st(s))
+            ax.plot(x, y, CLASS_M[spt.replace('?','')], c = CLASS_C[spt.replace('?','')])
+           # if star_labels:
+            #    ax.text(x+0.015,star.iloc[:,1]+0.01, st(s))
             if '?' in spt:
-                ax.plot(x, y, CLASS_M[spt], c = 'w', ms = 4)         
+                ax.plot(x, y, CLASS_M[spt.replace('?','')], c = 'w', ms = 4)         
         
                 
         ax.set_xlabel(st(pair_c[0]))
         ax.set_ylabel(st(pair_c[1]))            
         
         return ax  
+    
+    def multivar_plot(self,
+                      plot_cols,
+                      hue = 'SpC',
+                      ax = None,
+                      type_shown = 'both',
+                      merge_cand = True,
+                      **kwargs):  
+                                
+        rcols = {}
+        for c in plot_cols:
+            rcols[c] = st(c)       
+        
+        agg_tab, agg_sizes = self.aggregate(group_by = ['STAR','SpC','TIC','RA','DEC'],
+                                            agg_cols = plot_cols, update_tab = False) 
+        
+        loc_df = self.df.rename(columns=rcols)
+        loc_df_agg = agg_tab.rename(columns=rcols)   
+        loc_df['weight'] =  1 / agg_sizes
+        
+        if merge_cand:
+            loc_df['SpC'] = [x.replace('?','') for x in loc_df['SpC']]
+            loc_df_agg['SpC'] = [x.replace('?','') for x in loc_df_agg['SpC']]
+        
+        plt.rcParams.update(**cornerplot_kwargs)
+        
+        fig, axes = plt.subplots(2, int(len(plot_cols)/2), figsize=(14, 6))
+        axes = axes.flatten() 
+        
+        for i, col in enumerate(rcols):
+            
+            if type_shown in ['all','sector']: 
+                sns.kdeplot(data=loc_df,
+                            x=rcols[col], 
+                            hue=hue,
+                            common_norm=True,
+                             hue_order = ['B[e]SG','LBV'],
+                             palette = {'LBV': 'r', 'B[e]SG': 'b'},
+                             weights='weight',
+                             linestyle ='--',
+                             linewidth = 1,
+                             legend = False,
+                             ax=axes[i])
+            if type_shown in ['all','agg']: 
+                sns.kdeplot(data=loc_df_agg, 
+                            x=rcols[col], 
+                            hue=hue,
+                            common_norm=True,
+                            linestyle='-',
+                            linewidth = 2,
+                            hue_order = ['B[e]SG','LBV'],
+                            palette = {'LBV': 'r', 'B[e]SG': 'b'},
+                            legend = False,
+                            fill = True,
+                            ax=axes[i])
+                
+                
+            axes[i].set_ylabel("")
+            
+        fig.supylabel('Probability density')    
+        plt.tight_layout()  
+        
+        if 'save_output' in kwargs:
+            plt.savefig(kwargs['save_output'], format = 'pdf', dpi=300)   
+        
+        return fig
     
     def _pca_transform(self, var_cols = [], **kwargs):
         
@@ -348,13 +417,13 @@ class Features:
         for s in set(self.df['STAR']):
             
             umask = self.df['STAR'] == s
-            spt = self.df['SpC'][umask].iloc[0]            
+            spt = self.df['SpC'][umask].iloc[0]   
             ustar = umap_variables[umask]          
                     
             if len(cbar_col) == 1:
                 c = cmap(cnorm(cbc[umask].iloc[0]))
             else:
-                c = CLASS_C[spt] 
+                c = CLASS_C[spt.replace('?','')] 
                 
             if show_mutual:
               neighbors = knn_tab['NEIGHBOR'][knn_tab['STAR'] == s]
@@ -364,10 +433,11 @@ class Features:
                       n_ustar = umap_variables[self.df['STAR'] == n]
                       ax.plot([ustar[:,0],n_ustar[:,0]],
                               [ustar[:,1],n_ustar[:,1]],'k', ls = (0, (5, 10)), lw = 0.4, zorder=1)
-                      
-            ax.plot(ustar[:,0],ustar[:,1], CLASS_M[spt], c = c, zorder=2)
-            if '?' in spt:
-                ax.plot(ustar[:,0],ustar[:,1], CLASS_M[spt], c = 'w', ms = 4, zorder=2)
+              
+            marker = CLASS_M[spt.replace('?','')]
+            ax.plot(ustar[:,0],ustar[:,1], marker, c = c, zorder=2)
+            if '?' in spt and len(cbar_col) != 1:
+                ax.plot(ustar[:,0],ustar[:,1], 'o', c = 'w', ms = 5, zorder=2)
                 
             yl0, yl1 = ax.get_ylim()
             xl0, xl1 = ax.get_xlim()            
@@ -379,12 +449,13 @@ class Features:
 
         ax.set_xlabel('UMAP 1')
         ax.set_ylabel('UMAP 2')
-      #  if len(cbar_col) == 1:
-      #      extend = 'neither'
-      #      if cbar_col[0] == 'Q_JHK' or cbar_col[0] == 'CROWDSAP': extend = 'min'
-      #      plt.colorbar(cm.ScalarMappable(norm=cnorm, cmap=cmap), ax=ax,
-      #                   orientation = 'horizontal',
-      #                   extend = extend)          
+        if len(cbar_col) == 1:
+            extend = 'neither'
+            if cbar_col[0] == 'Q_JHK' or cbar_col[0] == 'CROWDSAP': extend = 'min'
+            cbar = plt.colorbar(cm.ScalarMappable(norm=cnorm, cmap=cmap), ax=ax,
+                         orientation = 'horizontal',
+                         extend = extend)
+            cbar.set_label(STY_LB[cbar_col[0]], labelpad=8, fontsize=18)
         
         return ax
     
@@ -393,12 +464,17 @@ class Features:
                    kn = 3,
                    class_col = 'SpC',
                    exclude_labels = [],
-                   split_cand = True,
+                   merge_cand = False,
                    n_perm = 0 ,                   
                    **kwargs):
         
-        x = self._pca_transform(**kwargs)     
-        y = self.df[class_col].to_numpy()
+        x = self._pca_transform(**kwargs) 
+        y = self.df[class_col].to_numpy()        
+       
+        if merge_cand and class_col == 'SpC' :
+            y = np.array([x.replace('?','') for x in self.df['SpC']])
+        else:
+            y = self.df[class_col].to_numpy()
         
         knn = KNeighborsClassifier(n_neighbors = kn + 1,weights="distance",metric="euclidean")
         loo = LeaveOneOut()
@@ -454,7 +530,7 @@ class Features:
         print("R2:", r2)
         print("MAE:", mae)
         
-        #Permutation test
+        #p ermutation test
         if n_perm > 0:
             rng = np.random.default_rng(42)
             r2_perm = np.zeros(n_perm)
@@ -485,9 +561,14 @@ class Features:
         
         x = self._pca_transform(**kwargs)
         names = [st(star)[0] for star in self.df["STAR"]]
-        label_colors = {}
+        
+        label_colors = {}; label_styles = {}
         for n, c in zip(names,self.df["SpC"]):
-            label_colors[n] = CLASS_C[c]
+            label_colors[n] = CLASS_C[c.replace('?','')]
+            if '?' in c:
+                label_styles[n] = 'italic'
+            else:
+                label_styles[n] = 'normal'        
             
         threshold = 9
 
@@ -516,12 +597,13 @@ class Features:
             ax_labels = ax.get_xmajorticklabels()
             for lbl in ax_labels:
                 lbl.set_color(label_colors[lbl.get_text()])
+                lbl.set_style(label_styles[lbl.get_text()])
             plt.tight_layout()
             plt.show()
             
         else:
             rows = []
-            for k in range(2, 12):
+            for k in range(2, 25):
                 clust = AgglomerativeClustering(n_clusters = k, 
                                                 linkage="ward", 
                                                 metric="euclidean")
@@ -553,6 +635,7 @@ class Features:
     
     def nearest_neighbors(self,
                       kn = 6,
+                      show_matrix = False,
                       **kwargs):
         
         x = self._pca_transform(**kwargs)
@@ -563,6 +646,34 @@ class Features:
         nn.fit(x)
         
         distances, indices = nn.kneighbors(x)
+        #print(distances, indices)
+        
+        if show_matrix:
+            fig,ax = plt.subplots(figsize=(8,10))
+            cmap_name = 'hot_r'
+            im = ax.imshow(distances, aspect='auto', cmap=cmap_name)
+            cmap = plt.colormaps[cmap_name]
+            
+            for i in range(len(names)):                
+                ax.text(-0.4,i+0.2,st(names[i])[0],c='k',weight='bold',size=16)
+                for r in range(1, kn + 1):
+                    
+                    dval = distances[i, r]                    
+                    j = indices[i,r]
+                    
+                    rgba_color = cmap(im.norm(dval))
+                    lum = 0.299 * rgba_color[0] + 0.587 * rgba_color[1] + 0.114 * rgba_color[2]
+                    font_color = 'k' if lum > 0.5 else 'w'
+
+                    ax.text(r-0.4,i+0.2,st(names[j])[0],c=font_color,size=15)
+            ax.set_yticks([]) 
+            ax.set_xticks([0,1,2,3])        
+            ax.set_xticklabels(['Star','NN 1','NN 2','NN 3'], fontsize=20)
+            ax.tick_params(axis='both', which='both', length=0)
+            cbar = plt.colorbar(im, orientation='horizontal', pad=0.01, aspect=40, location='top')
+            cbar.ax.set_title(r'PCA distance',fontsize=19) 
+            plt.tight_layout()
+            plt.savefig('knn.pdf', format = 'pdf')
         
         rows = []
         for i in range(len(names)):

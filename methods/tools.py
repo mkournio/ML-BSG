@@ -8,7 +8,6 @@ import os
 import astropy.units as u
 from astropy.io import fits
 
-
 def check_header_key(hdu,key,val):
     if key in hdu.header:
         return hdu.header[key] == val
@@ -74,10 +73,10 @@ def get_minmax_flux(hdulist, flux_key):
 
     return min(mins), max(maxs) 
 
-def get_fits_name(star,tic,**kwargs):
-    
-    if 'output_path' in kwargs:
-        path_to_output_fits = kwargs['output_path']
+def get_fits_name(star,tic,**kwargs):    
+  
+  #  if 'output_path' in kwargs:
+  #      path_to_output_fits = kwargs['output_path']
     
     return os.path.join(path_to_output_fits,'{}_{}.fits'.format(star,tic))
 
@@ -497,6 +496,8 @@ class FitsList(object):
         if len(hdutypes) < 1:
             
             return
+        
+        print('Removing hdu types..')
         
         ltab = self.tab
         for star, tic in zip(ltab['STAR'],ltab['TIC']):

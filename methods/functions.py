@@ -570,7 +570,7 @@ def _sampen_counts(y, m, r):
     return A, B
 
 
-def get_mse(flux, time=None, m=2, tau=12, tol=0.3,
+def get_mse(flux, time=None, m=2, tau=12, tol=0.2,
             break_d=0.1, ax=None):
 
     flux = np.array(flux)
@@ -617,13 +617,9 @@ def get_mse(flux, time=None, m=2, tau=12, tol=0.3,
         for l, h in zip(low, high):
 
             flux_seg = flux[l:h]
-
-            # This is where gap crossing is avoided:
-            # each continuous segment is coarse-grained separately.
             cg = _coarse_grain(flux_seg, scale)
 
             A, B = _sampen_counts(cg, m=m, r=r)
-
             A_tot += A
             B_tot += B
 
@@ -645,19 +641,21 @@ def get_mse(flux, time=None, m=2, tau=12, tol=0.3,
     if len(msy) < 5:
         return np.full(3, np.nan)
 
-    mse_power = np.nanmean(msy**2)
+    #mse_power = np.nanmean(msy**2)
+    mse_mean = np.nanmean(msy)
     mse_slope = (msy[-1] - msy[0]) / (msx[-1] - msx[0])
 
     if ax is not None:
-        print(mse_power, mse_slope, tau)
+       # print(mse_power, mse_slope, tau)
         ax.plot(msx, msy, 'o')
         z2 = np.polyfit(msx, msy, deg=2)
         f2 = np.poly1d(z2)
         ax.plot(msx, f2(msx))
+        
+    return np.array([mse_mean, mse_slope, tau])
+#    return np.array([mse_power, mse_slope, tau])
 
-    return np.array([mse_power, mse_slope, tau])
-
-'''def get_mse(flux, time = [], m = 2, tau = 12, tol = 0.3, break_d = 0.1, ax = None):
+'''def get_mse2(flux, time = [], m = 2, tau = 12, tol = 0.3, break_d = 0.1, ax = None):
     
     flux = np.array(flux)
     
@@ -892,7 +890,8 @@ def save_three_col(lc, filename, meta, units = 'mag'):
     if units == 'mag':
         y = lc.dmag.value
         z = lc.dmag_err.value
-        header = f'##BTJD-REF\tDMAG\tDMAG_ERR\n'
+        w = lc.fitmodel.value
+        header = f'##BTJD-REF\tDMAG\tDMAG_ERR\tFMODFL\n'
         
     with open(filename,'w') as f:
         
@@ -900,8 +899,8 @@ def save_three_col(lc, filename, meta, units = 'mag'):
             f.write(f'#{m} = {meta[m]}\n')
             
         f.write(header)   
-        for i,j,k in zip(x,y,z):
-            f.write("%s %s %s\n" % (i,j,k))
+        for i,j,k,l in zip(x,y,z,w):
+            f.write(f"{i} {j} {k} {l}\n")
             
     f.close()
     
